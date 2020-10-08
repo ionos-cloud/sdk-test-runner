@@ -1,0 +1,148 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "definitions": {
+        "Assertion": {
+            "properties": {
+                "and": {
+                    "items": {
+                        "$ref": "#/definitions/Assertion"
+                    },
+                    "type": "array"
+                },
+                "contains": {
+                    "anyOf": [
+                        {
+                            "additionalProperties": {
+                            },
+                            "type": "object"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "eq": {
+                },
+                "gt": {
+                    "type": [
+                        "string",
+                        "number"
+                    ]
+                },
+                "includes": {
+                    "items": {
+                    },
+                    "type": "array"
+                },
+                "len": {
+                    "anyOf": [
+                        {
+                            "$ref": "#/definitions/Assertion"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ]
+                },
+                "lt": {
+                    "type": [
+                        "string",
+                        "number"
+                    ]
+                },
+                "null": {
+                    "type": "boolean"
+                },
+                "or": {
+                    "items": {
+                        "$ref": "#/definitions/Assertion"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        },
+        "Test": {
+            "properties": {
+                "assert": {
+                    "additionalProperties": {
+                        "$ref": "#/definitions/Assertion"
+                    },
+                    "type": "object"
+                },
+                "dependencies": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "payload": {
+                    "$ref": "#/definitions/TestPayload"
+                },
+                "save": {
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "TestPayload": {
+            "properties": {
+                "operation": {
+                    "type": "string"
+                },
+                "options": {
+                    "properties": {
+                        "timeout": {
+                            "type": "number"
+                        }
+                    },
+                    "type": "object"
+                },
+                "params": {
+                    "items": {
+                        "additionalProperties": {
+                        },
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "properties": {
+        "cleanup": {
+            "items": {
+                "$ref": "#/definitions/Test"
+            },
+            "type": "array"
+        },
+        "include": {
+            "items": {
+                "type": "string"
+            },
+            "type": "array"
+        },
+        "setup": {
+            "items": {
+                "$ref": "#/definitions/Test"
+            },
+            "type": "array"
+        },
+        "tests": {
+            "items": {
+                "$ref": "#/definitions/Test"
+            },
+            "type": "array"
+        }
+    },
+    "type": "object"
+}
+
+
