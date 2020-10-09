@@ -1,5 +1,6 @@
-import {readFileSync} from 'fs'
+import {readFileSync, existsSync} from 'fs'
 import {Config} from '../models/config'
+import cliService from '../services/cli.service'
 
 export class ConfigService {
   public static CONFIG_FILE_NAME = 'config.json'
@@ -28,9 +29,13 @@ export class ConfigService {
     const tasks = new Listr([
       {
         title: 'reading config',
-        task: () => {
+        task: (ctx: any, task: any) => {
           const path = `${this.dir}/${ConfigService.CONFIG_FILE_NAME}`
-          cfg = JSON.parse(readFileSync(path, {encoding: 'utf8'}))
+          if (existsSync(path)) {
+            cfg = JSON.parse(readFileSync(path, {encoding: 'utf8'}))
+          } else {
+            task.title = `reading config: config file ${path} not found`
+          }
         },
       },
     ])

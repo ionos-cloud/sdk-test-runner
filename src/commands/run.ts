@@ -4,6 +4,7 @@ import {TestRunner} from '../services/test-runner'
 import driverService from '../services/driver.service'
 import configService from '../services/config.service'
 import {Command} from '@oclif/command'
+import {Driver} from '../models/driver'
 
 export default class Run extends Command {
   static description = 'Runs a test suite from a JSON test specification.'
@@ -27,8 +28,20 @@ export default class Run extends Command {
     }),
     driver: flags.string({
       char: 'd',
-      required: true,
-      description: 'language driver to use',
+      required: false,
+      description: 'language driver to use; path and args are taken from config',
+    }),
+    'driver-path': flags.string({
+      required: false,
+      exclusive: ['driver'],
+      description: 'driver path to use; cannot be specified together with "driver"',
+    }),
+    'driver-arg': flags.string({
+      required: false,
+      multiple: true,
+      dependsOn: ['driver-path'],
+      exclusive: ['driver'],
+      description: 'command line arguments to pass to driver; must be specified together with "driver-path"',
     }),
     verbose: flags.boolean({
       description: 'show each assertion evaluation',
@@ -54,12 +67,20 @@ export default class Run extends Command {
       this.error('IONOS_PASSWORD env var is missing')
     }
 
-    const driver = driverService.findDriver(flags.driver)
-
-    if (driver === undefined) {
-      /* driver not found */
-      throw new Error(`Driver ${flags.driver} not found`)
-    }
+    let driver: Driver | undefined
+    if (flags.driver !== undefined) {
+      driver = driverService.findDriver(flags.driver)
+      if (driver === undefined) {
+        /* driver not found */
+        throw new Error(`Driver ${flags.driver} not found`)
+      }
+    } else if (flags['driver-path']) {
+      driver = {
+        name: flags['driver-path'],
+        command: flags['driver-path'],
+        args: flags['driver-arg'] || [],
+      }
+    } else throw new Error('No driver specified')
 
     if (args.file === undefined) {
       throw new Error('No test file specified')
