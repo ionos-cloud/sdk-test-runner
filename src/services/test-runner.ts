@@ -14,6 +14,7 @@ import Listr = require('listr')
 import {ListrContext, ListrTask, ListrTaskWrapper} from 'listr'
 
 import chalk from 'chalk'
+import debugService from './buffered-debug.service'
 
 export enum TestResult {
   SUCCESS,
@@ -64,10 +65,19 @@ export class TestRunner {
     return this
   }
 
-  protected logDebug(msg: any) {
+  protected logDebug(msg: string) {
     if (this.debug) {
-      // eslint-disable-next-line no-console
-      console.log(msg)
+      /* we need to save this in a buffer and flush it after Listr finishes, otherwise
+       * Listr's output will overwrite whatever all our logs if we use a tty */
+      debugService.log(msg)
+    }
+  }
+
+  /* directly print a debug message - careful: the text will be erased by Listr output if used in
+   * the middle of a Listr task */
+  protected printDebug(msg: any) {
+    if (this.debug) {
+      cliService.debug(msg)
     }
   }
 
@@ -207,7 +217,7 @@ export class TestRunner {
     return true
   }
 
-  protected getDriverSubtask(test: Test): ListrTask<ListrContext>[] {
+  protected buildDriverSubtask(test: Test): ListrTask<ListrContext>[] {
     return [
       {
         title: 'running driver command',
@@ -218,7 +228,7 @@ export class TestRunner {
             result = await this.runCommand(this.replaceSymbolsInObj(test.payload))
             this.commandError[test.name] = false
           } catch (error) {
-            this.logDebug(error)
+            this.logDebug(`command error: ${error}`)
             this.commandError[test.name] = true
             ctx.commandFailure = true
             throw error
@@ -284,7 +294,7 @@ export class TestRunner {
   protected buildMainTask(test: Test): Listr {
     const assertionSubtasks = this.buildAssertionsSubtasks(test)
     const subtasks = [
-      ...this.getDriverSubtask(test),
+      ...this.buildDriverSubtask(test),
       ...assertionSubtasks.subtasks,
       ...this.buildCleanupSubtasks(),
     ]
@@ -295,7 +305,7 @@ export class TestRunner {
       },
 
       // @ts-ignore
-    ], {concurrent: false, exitOnError: false, collapse: assertionSubtasks.collapse && !this.verbose})
+    ], {concurrent: false, exitOnError: false, collapse: assertionSubtasks.collapse && !this.verbose && !this.debug})
   }
 
   /* todo: returning a TestResult and also using this.runResults is a bit wonky */
@@ -327,6 +337,8 @@ export class TestRunner {
         this.failedTests++
         ret = TestResult.FAILED
       }
+    } finally {
+      debugService.flush()
     }
 
     this.runResults[test.name] = ret
@@ -338,16 +350,14 @@ export class TestRunner {
   protected async runCommand(payload: TestPayload): Promise<string> {
     try {
       const input = JSON.stringify(payload)
-      this.logDebug(`cmd input: ${input}`)
+      this.logDebug(`${chalk.yellow('driver input')}: ${input}`)
       const subprocess = execa(this.command, this.args, {input})
       const out = await subprocess
-      this.logDebug('cmd stdout:')
-      this.logDebug(out.stdout)
-      this.logDebug('cmd stderr:')
-      this.logDebug(out.stderr)
+      this.logDebug(`${chalk.yellow('driver output')}: ${out.stdout}`)
+      this.logDebug(`${chalk.yellow('driver stderr')}: ${out.stderr}`)
       return out.stdout
     } catch (error) {
-      this.logDebug(`cmd error: ${error}`)
+      this.logDebug(`${chalk.yellowBright('driver error')}: ${error.message}`)
       throw new Error(`Error running command ${this.command}: ${error.message}`)
     }
   }
@@ -445,7 +455,7 @@ export class TestRunner {
       this.saveData(this.testSuite.data)
     }
 
-    this.logDebug('symbol registry: ' + this.symbolRegistry.dump())
+    this.printDebug('symbol registry: ' + this.symbolRegistry.dump())
 
     try {
       await this.setup()

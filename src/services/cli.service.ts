@@ -1,4 +1,5 @@
 import {cli} from 'cli-ux'
+import chalk from 'chalk'
 
 export class CliService {
   public info(msg: string) {
@@ -14,7 +15,8 @@ export class CliService {
   }
 
   public debug(msg: string) {
-    cli.debug(msg)
+    // eslint-disable-next-line no-console
+    console.debug(chalk.gray('  ⇢ (debug)'), chalk.gray(msg))
   }
 }
 
