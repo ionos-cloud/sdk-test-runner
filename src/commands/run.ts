@@ -105,7 +105,6 @@ export default class Run extends Command {
   }
 
   async catch(error: any): Promise<any> {
-
     if (error.oclif === undefined || error.oclif.exit !== 0) {
       this.error(error.message, {
         exit: 1,

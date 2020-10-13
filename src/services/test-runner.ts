@@ -45,6 +45,7 @@ export class TestRunner {
   protected excludedTests: string[] = []
 
   protected debug = false
+
   protected verbose = false
 
   constructor(command: string, args: string[]) {
@@ -120,96 +121,97 @@ export class TestRunner {
     }
   }
 
-  /* todo: returning a TestResult and also using this.runResults is a bit wonky */
-  public async runTest(test: Test): Promise<TestResult> {
-    let ret = TestResult.SUCCESS
-
-    if (this.runResults[test.name] !== undefined) {
-      /* test already ran */
-      return this.runResults[test.name]
+  protected async runDeps(test: Test): Promise<TestResult> {
+    if (!Array.isArray(test.dependencies)) {
+      return TestResult.SUCCESS
     }
-
-    if (this.excludedTests.includes(test.name)) {
-      /* skip this test */
-      /* display it for the user to know */
-      const mainTask = new Listr([
-        {
-          title: `TEST: ${test.name}`,
-          skip: () => true,
-          task: () => '',
-        },
-      ], {concurrent: false, exitOnError: false})
-
-      // eslint-disable-next-line max-depth
+    for (const dep of test.dependencies) {
+      const depTest = this.findTest(dep)
+      if (depTest === undefined) {
+        cliService.warn(`dependency '${dep}' of test '${test.name}' was not found; ignoring it`)
+        continue
+      }
 
       // eslint-disable-next-line no-await-in-loop
-      await mainTask.run()
+      const outcome = await this.runTest(depTest)
+      if (this.commandError[depTest.name]) {
+        /* dep couldn't run, fail this test also */
+        this.failedTests++
+        this.runResults[test.name] = TestResult.FAILED
+        this.commandError[test.name] = true
 
-      this.skippedTests++
-      this.runResults[test.name] = TestResult.SKIPPED
-      return this.runResults[test.name]
-    }
-
-    /* solve dependencies */
-    if (Array.isArray(test.dependencies)) {
-      for (const dep of test.dependencies) {
-        const depTest = this.findTest(dep)
-        if (depTest === undefined) {
-          cliService.warn(`dependency '${dep}' of test '${test.name}' was not found; ignoring it`)
-          continue
-        }
-
-        // eslint-disable-next-line no-await-in-loop
-        const outcome = await this.runTest(depTest)
-        if (this.commandError[depTest.name]) {
-          /* dep couldn't run, fail this test also */
-          this.failedTests++
-          this.runResults[test.name] = TestResult.FAILED
-          this.commandError[test.name] = true
-
-          /* display it for the user to know */
-          const mainTask = new Listr([
-            {
-              title: `TEST: ${test.name}`,
-              task: () => {
-                throw new Error(`dependency '${depTest.name}' failed to run`)
-              },
+        /* display it for the user to know */
+        const mainTask = new Listr([
+          {
+            title: `TEST: ${test.name}`,
+            task: () => {
+              throw new Error(`dependency '${depTest.name}' failed to run`)
             },
-          ], {concurrent: false, exitOnError: false})
-          try {
-            // eslint-disable-next-line no-await-in-loop
-            await mainTask.run()
-          } catch (error) {}
-          return this.runResults[test.name]
-        }
-        if (outcome === TestResult.SKIPPED) {
-          /* copy dep outcome i.e. if skipped, mark it skipped */
-          this.runResults[test.name] = outcome
-          this.skippedTests++
+          },
+        ], {concurrent: false, exitOnError: false})
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await mainTask.run()
+        } catch (error) {}
+        return this.runResults[test.name]
+      }
 
-          /* display it for the user to know */
-          const mainTask = new Listr([
+      let reason = 'was skipped'
+      switch (outcome) {
+      case TestResult.FAILED:
+        reason = 'failed'
+      // eslint-disable-next-line no-fallthrough
+      case TestResult.SKIPPED:
+        /* copy dep outcome i.e. if skipped, mark it skipped */
+        this.runResults[test.name] = TestResult.SKIPPED
+        this.skippedTests++
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await new Listr([
             {
               title: `TEST: ${test.name}`,
               task: () => '',
-              skip: () => `dependency '${depTest.name}' was skipped`,
+              skip: () => `dependency '${depTest.name}' ${reason}`,
             },
-          ], {concurrent: false, exitOnError: false})
-
-          // eslint-disable-next-line max-depth
-          try {
-            // eslint-disable-next-line no-await-in-loop
-            await mainTask.run()
-          } catch (error) {}
-          return this.runResults[test.name]
+          ], {concurrent: false, exitOnError: false}).run()
+        } catch (error) {
+          cliService.error(error.message)
         }
+        return this.runResults[test.name]
       }
     }
+    return TestResult.SUCCESS
+  }
 
-    const subTasks: ListrTask<ListrContext>[] = [
+  protected async checkExcluded(test: Test): Promise<boolean> {
+    if (!this.excludedTests.includes(test.name)) {
+      return false
+    }
+    /* skip this test */
+    /* display it for the user to know */
+    const mainTask = new Listr([
+      {
+        title: `TEST: ${test.name}`,
+        skip: () => true,
+        task: () => '',
+      },
+    ], {concurrent: false, exitOnError: false})
+
+    // eslint-disable-next-line max-depth
+
+    // eslint-disable-next-line no-await-in-loop
+    await mainTask.run()
+
+    this.skippedTests++
+    this.runResults[test.name] = TestResult.SKIPPED
+    return true
+  }
+
+  protected getDriverSubtask(test: Test): ListrTask<ListrContext>[] {
+    return [
       {
         title: 'running driver command',
-        task: async (ctx: any, task: ListrTaskWrapper) => {
+        task: async (ctx: any, _: ListrTaskWrapper) => {
           /* run command */
           let result = null
           try {
@@ -238,30 +240,36 @@ export class TestRunner {
         },
       },
     ]
+  }
 
-    /* add assertion tasks */
-    let havePrint = false
-    if (typeof test.assert !== 'undefined') {
-      for (const symbol of Object.keys(test.assert)) {
-        if (test.assert[symbol].print !== undefined) {
-          havePrint = true
-        }
-        subTasks.push(
-          {
-            title: `evaluating '${symbol}'`,
-            task: (ctx: any, task: ListrTaskWrapper) => {
-              const value = this.replaceSymbolsInObj(this.symbolRegistry.get(`${this.replaceSymbols(symbol)}`))
-              task.title += ` = ${JSON.stringify(value)}`
-              return evalAssertion(value, this.replaceSymbolsInObj(test.assert[symbol]))
-            },
-            skip: ctx => ctx.commandFailure ? 'driver command failed' : false,
-          }
-        )
-      }
+  protected buildAssertionsSubtasks(test: Test): { subtasks: ListrTask<ListrContext>[]; collapse: boolean} {
+    let collapse = true
+    const subtasks: ListrTask<ListrContext>[] = []
+    if (typeof test.assert === 'undefined') {
+      return {subtasks, collapse}
     }
+    for (const symbol of Object.keys(test.assert)) {
+      if (test.assert[symbol].print !== undefined) {
+        /* we want to keep the tests open if we have a print inside them, to keep the message visible */
+        collapse = false
+      }
+      subtasks.push(
+        {
+          title: `evaluating '${symbol}'`,
+          task: (ctx: any, task: ListrTaskWrapper) => {
+            const value = this.replaceSymbolsInObj(this.symbolRegistry.get(`${this.replaceSymbols(symbol)}`))
+            task.title += ` = ${JSON.stringify(value)}`
+            return evalAssertion(value, this.replaceSymbolsInObj(test.assert[symbol]))
+          },
+          skip: ctx => ctx.commandFailure ? 'driver command failed' : false,
+        }
+      )
+    }
+    return {subtasks, collapse}
+  }
 
-    /* command result cleanup */
-    subTasks.push({
+  protected buildCleanupSubtasks(): ListrTask<ListrContext>[] {
+    return [{
       title: 'cleaning up command results',
       task: async ctx => {
         /* remove command output from registry to make room for the next test */
@@ -270,18 +278,49 @@ export class TestRunner {
         }
       },
       skip: ctx => ctx.commandFailure ? 'driver command failed' : false,
-    })
+    }]
+  }
 
-    const mainTask = new Listr([
+  protected buildMainTask(test: Test): Listr {
+    const assertionSubtasks = this.buildAssertionsSubtasks(test)
+    const subtasks = [
+      ...this.getDriverSubtask(test),
+      ...assertionSubtasks.subtasks,
+      ...this.buildCleanupSubtasks(),
+    ]
+    return new Listr([
       {
         title: `TEST: ${test.name}`,
-        task: () => new Listr(subTasks, {concurrent: false, exitOnError: false}),
+        task: () => new Listr(subtasks, {concurrent: false, exitOnError: false}),
       },
-      //@ts-ignore
-    ], {concurrent: false, exitOnError: false, collapse: !havePrint && !this.verbose})
+
+      // @ts-ignore
+    ], {concurrent: false, exitOnError: false, collapse: assertionSubtasks.collapse && !this.verbose})
+  }
+
+  /* todo: returning a TestResult and also using this.runResults is a bit wonky */
+  public async runTest(test: Test): Promise<TestResult> {
+    let ret = TestResult.SUCCESS
+
+    if (this.runResults[test.name] !== undefined) {
+      /* test already ran */
+      return this.runResults[test.name]
+    }
+
+    /* check if the test was excluded from the run-set */
+    if (await this.checkExcluded(test)) {
+      return this.runResults[test.name]
+    }
+
+    /* solve dependencies */
+    const depsResult = await this.runDeps(test)
+    if (depsResult !== TestResult.SUCCESS) {
+      /* deps failed or were skipped */
+      return depsResult
+    }
 
     try {
-      await mainTask.run()
+      await this.buildMainTask(test).run()
     } catch (error) {
       if (typeof error.errors !== 'undefined') {
         /* mark test as failed */
@@ -302,8 +341,10 @@ export class TestRunner {
       this.logDebug(`cmd input: ${input}`)
       const subprocess = execa(this.command, this.args, {input})
       const out = await subprocess
-      this.logDebug(`cmd stdout: ${out.stdout}`)
-      this.logDebug(`cmd stderr: ${out.stderr}`)
+      this.logDebug('cmd stdout:')
+      this.logDebug(out.stdout)
+      this.logDebug('cmd stderr:')
+      this.logDebug(out.stderr)
       return out.stdout
     } catch (error) {
       this.logDebug(`cmd error: ${error}`)
