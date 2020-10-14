@@ -15,6 +15,7 @@ import {ListrContext, ListrTask, ListrTaskWrapper} from 'listr'
 
 import chalk from 'chalk'
 import debugService from './buffered-debug.service'
+import {formatDuration, getDuration} from "../utils/misc";
 
 export enum TestResult {
   SUCCESS,
@@ -223,6 +224,7 @@ export class TestRunner {
         title: 'running driver command',
         task: async (ctx: any, _: ListrTaskWrapper) => {
           /* run command */
+          ctx.startTime = process.hrtime()
           let result = null
           try {
             result = await this.runCommand(this.replaceSymbolsInObj(test.payload))
@@ -278,7 +280,7 @@ export class TestRunner {
     return {subtasks, collapse}
   }
 
-  protected buildCleanupSubtasks(): ListrTask<ListrContext>[] {
+  protected buildCleanupSubtasks(parentTask: any): ListrTask<ListrContext>[] {
     return [{
       title: 'cleaning up command results',
       task: async ctx => {
@@ -286,6 +288,8 @@ export class TestRunner {
         for (const resultKey of Object.keys(ctx.resultObj)) {
           this.symbolRegistry.del(resultKey)
         }
+        const duration = process.hrtime(ctx.startTime)
+        parentTask.title += ` (${formatDuration(getDuration(duration[0]), duration[1] / 1000000)})`
       },
       skip: ctx => ctx.commandFailure ? 'driver command failed' : false,
     }]
@@ -293,15 +297,14 @@ export class TestRunner {
 
   protected buildMainTask(test: Test): Listr {
     const assertionSubtasks = this.buildAssertionsSubtasks(test)
-    const subtasks = [
-      ...this.buildDriverSubtask(test),
-      ...assertionSubtasks.subtasks,
-      ...this.buildCleanupSubtasks(),
-    ]
     return new Listr([
       {
         title: `TEST: ${test.name}`,
-        task: () => new Listr(subtasks, {concurrent: false, exitOnError: false}),
+        task: (ctx: any, task: any) => new Listr([
+          ...this.buildDriverSubtask(test),
+          ...assertionSubtasks.subtasks,
+          ...this.buildCleanupSubtasks(task),
+        ], {concurrent: false, exitOnError: false}),
       },
 
       // @ts-ignore
@@ -456,7 +459,7 @@ export class TestRunner {
     }
 
     this.printDebug('symbol registry: ' + this.symbolRegistry.dump())
-
+    const hrstart = process.hrtime()
     try {
       await this.setup()
       if (this.testSuite.tests !== undefined) {
@@ -480,6 +483,9 @@ export class TestRunner {
       try {
         await this.cleanup()
       } catch (error) {}
+
+      const hrend = process.hrtime(hrstart)
+      const duration = getDuration(hrend[0])
       cliService.info(`Total tests: ${chalk.blueBright(totalN)}`)
       let failedStr = '0'
       if (failedN > 0) {
@@ -489,6 +495,7 @@ export class TestRunner {
       cliService.info(`Successful tests: ${chalk.greenBright(successful)}`)
       cliService.info(`Failed tests: ${failedStr}`)
       cliService.info(`Skipped tests: ${skippedN}`)
+      cliService.info(`Duration: ${formatDuration(duration, hrend[1] / 1000000)}`)
     }
   }
 
