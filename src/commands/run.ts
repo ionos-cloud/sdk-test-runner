@@ -101,7 +101,10 @@ export default class Run extends Command {
       testRunner.excludeTests(flags.exclude)
     }
     testRunner.setDebug(flags.debug).setVerbose(flags.verbose)
-    await testRunner.run()
+    const stats = await testRunner.run()
+    if (stats.failed > 0) {
+      this.error('test run ended with failed tests')
+    }
   }
 
   async catch(error: any): Promise<any> {

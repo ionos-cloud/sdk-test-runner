@@ -15,7 +15,9 @@ import {ListrContext, ListrTask, ListrTaskWrapper} from 'listr'
 
 import chalk from 'chalk'
 import debugService from './buffered-debug.service'
-import {formatDuration, getDuration} from "../utils/misc";
+import {formatDuration, getDuration} from '../utils/misc'
+import {SimpleListrRenderer} from '../utils/simple-listr-renderer'
+import {RunStats} from "../models/run-stats";
 
 export enum TestResult {
   SUCCESS,
@@ -159,7 +161,7 @@ export class TestRunner {
               throw new Error(`dependency '${depTest.name}' failed to run`)
             },
           },
-        ], {concurrent: false, exitOnError: false})
+        ], {nonTTYRenderer: SimpleListrRenderer, concurrent: false, exitOnError: false})
         try {
           // eslint-disable-next-line no-await-in-loop
           await mainTask.run()
@@ -184,7 +186,7 @@ export class TestRunner {
               task: () => '',
               skip: () => `dependency '${depTest.name}' ${reason}`,
             },
-          ], {concurrent: false, exitOnError: false}).run()
+          ], {nonTTYRenderer: SimpleListrRenderer, concurrent: false, exitOnError: false}).run()
         } catch (error) {
           cliService.error(error.message)
         }
@@ -206,7 +208,7 @@ export class TestRunner {
         skip: () => true,
         task: () => '',
       },
-    ], {concurrent: false, exitOnError: false})
+    ], {nonTTYRenderer: SimpleListrRenderer, concurrent: false, exitOnError: false})
 
     // eslint-disable-next-line max-depth
 
@@ -306,9 +308,12 @@ export class TestRunner {
           ...this.buildCleanupSubtasks(task),
         ], {concurrent: false, exitOnError: false}),
       },
-
+    ], {
+      nonTTYRenderer: SimpleListrRenderer, concurrent: false,
+      exitOnError: false,
       // @ts-ignore
-    ], {concurrent: false, exitOnError: false, collapse: assertionSubtasks.collapse && !this.verbose && !this.debug})
+      collapse: assertionSubtasks.collapse && !this.verbose && !this.debug,
+    })
   }
 
   /* todo: returning a TestResult and also using this.runResults is a bit wonky */
@@ -444,7 +449,7 @@ export class TestRunner {
     this.symbolRegistry.save('data', processedData)
   }
 
-  public async run() {
+  public async run(): Promise<RunStats> {
     this.runResults = {}
     this.commandError = {}
 
@@ -459,7 +464,17 @@ export class TestRunner {
     }
 
     this.printDebug('symbol registry: ' + this.symbolRegistry.dump())
+
+    const stats: RunStats = {
+      total: 0,
+      failed: 0,
+      successful: 0,
+      skipped: 0,
+      durationSeconds: 0,
+      durationMs: 0,
+    }
     const hrstart = process.hrtime()
+
     try {
       await this.setup()
       if (this.testSuite.tests !== undefined) {
@@ -474,29 +489,29 @@ export class TestRunner {
       }
     } finally {
       /* do this before cleanup since cleanup could fail even more tests */
-      let totalN = 0
       if (this.testSuite.tests !== undefined) {
-        totalN = this.testSuite.tests.length
+        stats.total = this.testSuite.tests.length
       }
-      const failedN = this.failedTests
-      const skippedN = this.skippedTests
+      stats.failed = this.failedTests
+      stats.skipped = this.skippedTests
       try {
         await this.cleanup()
       } catch (error) {}
 
       const hrend = process.hrtime(hrstart)
       const duration = getDuration(hrend[0])
-      cliService.info(`Total tests: ${chalk.blueBright(totalN)}`)
+      cliService.info(`Total tests: ${chalk.blueBright(stats.total)}`)
       let failedStr = '0'
-      if (failedN > 0) {
-        failedStr = chalk.red(failedN)
+      if (stats.failed > 0) {
+        failedStr = chalk.red(stats.failed)
       }
-      const successful = totalN - failedN - skippedN
-      cliService.info(`Successful tests: ${chalk.greenBright(successful)}`)
+      stats.successful = stats.total - stats.failed - stats.skipped
+      cliService.info(`Successful tests: ${chalk.greenBright(stats.successful)}`)
       cliService.info(`Failed tests: ${failedStr}`)
-      cliService.info(`Skipped tests: ${skippedN}`)
+      cliService.info(`Skipped tests: ${stats.skipped}`)
       cliService.info(`Duration: ${formatDuration(duration, hrend[1] / 1000000)}`)
     }
+    return stats
   }
 
   protected replaceSymbols(str: string): string | number {

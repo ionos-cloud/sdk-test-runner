@@ -2,6 +2,34 @@ import {cli} from 'cli-ux'
 import chalk from 'chalk'
 
 export class CliService {
+  protected indentLevel = 1
+
+  protected indentString = '  '
+
+  protected buildIndent() {
+    let indent = ''
+    for (let i = 0; i < this.indentLevel; i ++) {
+      indent += this.indentString
+    }
+    return indent
+  }
+
+  public setIndentString(str: string) {
+    this.indentString = str
+  }
+
+  public getIndentString() {
+    return this.indentString
+  }
+
+  public indent(amount = 1) {
+    this.indentLevel += amount
+  }
+
+  public outdent(amount = 1) {
+    this.indentLevel -= amount
+  }
+
   public info(msg: string) {
     cli.info('  ❯ ' + msg)
   }
@@ -17,6 +45,11 @@ export class CliService {
   public debug(msg: string) {
     // eslint-disable-next-line no-console
     console.debug(chalk.gray('  ⇢ (debug)'), chalk.gray(msg))
+  }
+
+  public print(msg: string) {
+    // eslint-disable-next-line no-console
+    console.log(this.buildIndent() + msg)
   }
 }
 

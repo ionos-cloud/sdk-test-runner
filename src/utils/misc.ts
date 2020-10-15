@@ -1,3 +1,5 @@
+import {SimpleListrRenderer} from "./simple-listr-renderer";
+
 export interface Duration {
   seconds: number;
   minutes: number;
@@ -44,4 +46,11 @@ export function formatDuration(d: Duration, ms = 0): string {
     ret = '0.00ms'
   }
   return ret
+}
+
+export function getListrRenderer() {
+  if (!process.stdout.isTTY) {
+    return SimpleListrRenderer
+  }
+  return null
 }
