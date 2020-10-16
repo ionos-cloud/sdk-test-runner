@@ -19,7 +19,7 @@ $ npm install -g @cloudsdk/test-runner
 $ csdk-test-runner COMMAND
 running command...
 $ csdk-test-runner (-v|--version|version)
-@cloudsdk/test-runner/1.5.0 darwin-x64 node-v14.7.0
+@cloudsdk/test-runner/1.5.1 darwin-x64 node-v14.7.0
 $ csdk-test-runner --help [COMMAND]
 USAGE
   $ csdk-test-runner COMMAND
@@ -63,6 +63,7 @@ OPTIONS
   -x, --exclude=exclude      exclude tests
   --debug                    show debugging information: verbose + displays each driver command's input and output
   --driver-arg=driver-arg    command line arguments to pass to driver; must be specified together with "driver-path"
+  --driver-cwd=driver-cwd    working directory to run the driver command in
   --driver-path=driver-path  driver path to use; cannot be specified together with "driver"
   --verbose                  show each assertion evaluation
 
