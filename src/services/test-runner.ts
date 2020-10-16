@@ -22,6 +22,7 @@ import {Driver} from '../models/driver'
 
 import callStackService, {CallStackService} from './call-stack.service'
 import * as path from 'path'
+import deepmerge from 'deepmerge'
 
 export enum TestResult {
   SUCCESS,
@@ -139,6 +140,9 @@ export class TestRunner {
 
   protected async runDeps(test: Test): Promise<TestResult> {
     this.logDebug(`(${test.name} running dependencies`)
+    if (typeof (test.dependencies) === 'string') {
+      test.dependencies = [test.dependencies]
+    }
     if (!Array.isArray(test.dependencies)) {
       return TestResult.SUCCESS
     }
@@ -443,10 +447,7 @@ export class TestRunner {
             ...subTestSuite.data,
           }
         } else {
-          testSuite.data = {
-            ...subTestSuite.data,
-            ...testSuite.data,
-          }
+          testSuite.data = deepmerge.all([subTestSuite.data, testSuite.data])
         }
       }
     }
@@ -493,7 +494,6 @@ export class TestRunner {
     }
 
     this.printDebug('symbol registry: ' + this.symbolRegistry.dump())
-
     const stats: RunStats = {
       total: 0,
       failed: 0,
@@ -507,6 +507,7 @@ export class TestRunner {
     try {
       await this.setup()
       if (this.testSuite.tests !== undefined) {
+        cliService.info('running tests')
         for (const test of this.testSuite.tests) {
           if (this.selectedTests === undefined || this.selectedTests.includes(test.name)) {
             // eslint-disable-next-line no-await-in-loop

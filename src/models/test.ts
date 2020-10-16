@@ -5,6 +5,6 @@ export interface Test {
   name: string;
   payload: TestPayload;
   save?: { [key: string]: string };
-  dependencies?: Array<string>;
+  dependencies?: Array<string> | string;
   assert: { [key: string]: Assertion };
 }
