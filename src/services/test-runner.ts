@@ -18,6 +18,7 @@ import debugService from './buffered-debug.service'
 import {formatDuration, getDuration} from '../utils/misc'
 import {SimpleListrRenderer} from '../utils/simple-listr-renderer'
 import {RunStats} from "../models/run-stats";
+import {Driver} from "../models/driver";
 
 export enum TestResult {
   SUCCESS,
@@ -36,9 +37,7 @@ export class TestRunner {
 
   protected symbolRegistry: SymbolRegistry
 
-  protected command: string
-
-  protected args: string[]
+  protected driver: Driver
 
   protected failedTests = 0
 
@@ -52,9 +51,8 @@ export class TestRunner {
 
   protected verbose = false
 
-  constructor(command: string, args: string[]) {
-    this.command = command
-    this.args = args
+  constructor(driver: Driver) {
+    this.driver = driver
     this.symbolRegistry = new SymbolRegistry()
   }
 
@@ -359,14 +357,18 @@ export class TestRunner {
     try {
       const input = JSON.stringify(payload)
       this.logDebug(`${chalk.yellow('driver input')}: ${input}`)
-      const subprocess = execa(this.command, this.args, {input})
+      const options: execa.Options = {
+        input,
+        cwd: (typeof this.driver.cwd === 'undefined') ? process.cwd() : this.driver.cwd,
+      }
+      const subprocess = execa(this.driver.command, this.driver.args, options)
       const out = await subprocess
       this.logDebug(`${chalk.yellow('driver output')}: ${out.stdout}`)
       this.logDebug(`${chalk.yellow('driver stderr')}: ${out.stderr}`)
       return out.stdout
     } catch (error) {
       this.logDebug(`${chalk.yellowBright('driver error')}: ${error.message}`)
-      throw new Error(`Error running command ${this.command}: ${error.message}`)
+      throw new Error(`Error running command ${this.driver.command}: ${error.message}`)
     }
   }
 

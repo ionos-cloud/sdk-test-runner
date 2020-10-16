@@ -43,6 +43,12 @@ export default class Run extends Command {
       exclusive: ['driver'],
       description: 'command line arguments to pass to driver; must be specified together with "driver-path"',
     }),
+    'driver-cwd': flags.string({
+      required: false,
+      dependsOn: ['driver-path'],
+      exclusive: ['driver'],
+      description: 'working directory to run the driver command in',
+    }),
     verbose: flags.boolean({
       description: 'show each assertion evaluation',
     }),
@@ -79,6 +85,7 @@ export default class Run extends Command {
         name: flags['driver-path'],
         command: flags['driver-path'],
         args: flags['driver-arg'] || [],
+        cwd: flags['driver-cwd'],
       }
     } else throw new Error('No driver specified')
 
@@ -90,7 +97,7 @@ export default class Run extends Command {
     cliService.info(`driver command is: ${driver.command} ${driver.args.join(' ')}`)
 
     // const testRunner = new TestRunner('/bin/sh', ['/Users/florin/work/bin/test.sh'])
-    const testRunner = new TestRunner(driver.command, driver.args)
+    const testRunner = new TestRunner(driver)
     testRunner.load(args.file)
     if (flags.test !== undefined) {
       cliService.info(`running only these tests: ${flags.test}`)
