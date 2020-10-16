@@ -1,6 +1,7 @@
 import {readFileSync, existsSync} from 'fs'
 import {Config} from '../models/config'
 import cliService from '../services/cli.service'
+import {SimpleListrRenderer} from "../utils/simple-listr-renderer";
 
 export class ConfigService {
   public static CONFIG_FILE_NAME = 'config.json'
@@ -38,7 +39,7 @@ export class ConfigService {
           }
         },
       },
-    ])
+    ], {nonTTYRenderer: SimpleListrRenderer})
     await tasks.run()
     return cfg
   }

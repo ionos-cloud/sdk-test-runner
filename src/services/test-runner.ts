@@ -17,8 +17,11 @@ import chalk from 'chalk'
 import debugService from './buffered-debug.service'
 import {formatDuration, getDuration} from '../utils/misc'
 import {SimpleListrRenderer} from '../utils/simple-listr-renderer'
-import {RunStats} from "../models/run-stats";
-import {Driver} from "../models/driver";
+import {RunStats} from '../models/run-stats'
+import {Driver} from '../models/driver'
+
+import callStackService, {CallStackService} from './call-stack.service'
+import * as path from 'path'
 
 export enum TestResult {
   SUCCESS,
@@ -50,6 +53,8 @@ export class TestRunner {
   protected debug = false
 
   protected verbose = false
+
+  protected includeStack: CallStackService = new CallStackService()
 
   constructor(driver: Driver) {
     this.driver = driver
@@ -133,6 +138,7 @@ export class TestRunner {
   }
 
   protected async runDeps(test: Test): Promise<TestResult> {
+    this.logDebug(`(${test.name} running dependencies`)
     if (!Array.isArray(test.dependencies)) {
       return TestResult.SUCCESS
     }
@@ -219,6 +225,7 @@ export class TestRunner {
   }
 
   protected buildDriverSubtask(test: Test): ListrTask<ListrContext>[] {
+    this.printDebug(`(${test.name}) building driver subtask`)
     return [
       {
         title: 'running driver command',
@@ -255,6 +262,7 @@ export class TestRunner {
   }
 
   protected buildAssertionsSubtasks(test: Test): { subtasks: ListrTask<ListrContext>[]; collapse: boolean} {
+    this.printDebug(`(${test.name}) building assertion subtasks`)
     let collapse = true
     const subtasks: ListrTask<ListrContext>[] = []
     if (typeof test.assert === 'undefined') {
@@ -318,19 +326,32 @@ export class TestRunner {
   public async runTest(test: Test): Promise<TestResult> {
     let ret = TestResult.SUCCESS
 
+    try {
+      callStackService.push(test.name)
+    } catch (error) {
+      this.failedTests++
+      this.runResults[test.name] = TestResult.FAILED
+      throw error
+    }
+
     if (this.runResults[test.name] !== undefined) {
       /* test already ran */
+      callStackService.pop()
       return this.runResults[test.name]
     }
 
+    this.printDebug(`running test ${test.name}`)
+
     /* check if the test was excluded from the run-set */
     if (await this.checkExcluded(test)) {
+      callStackService.pop()
       return this.runResults[test.name]
     }
 
     /* solve dependencies */
     const depsResult = await this.runDeps(test)
     if (depsResult !== TestResult.SUCCESS) {
+      callStackService.pop()
       /* deps failed or were skipped */
       return depsResult
     }
@@ -347,6 +368,7 @@ export class TestRunner {
       debugService.flush()
     }
 
+    callStackService.pop()
     this.runResults[test.name] = ret
     return ret
   }
@@ -390,11 +412,14 @@ export class TestRunner {
     for (const inc of testSuite.include) {
       let content: Buffer
       try {
+        this.printDebug(`loading included file ${inc}`)
+        this.includeStack.push(path.basename(inc))
         content = readFileSync(inc)
       } catch (error) {
         throw new Error(`Error reading file ${inc}: ${error.message}`)
       }
       const subTestSuite = this.loadTestSuite(content.toString())
+      this.includeStack.pop()
       if (subTestSuite.tests !== undefined) {
         testSuite.tests.unshift(...subTestSuite.tests)
       }
@@ -432,6 +457,8 @@ export class TestRunner {
   public load(fileName: string): TestRunner {
     let content: Buffer
     try {
+      this.includeStack.push(path.basename(fileName))
+      this.printDebug(`loading file ${fileName}`)
       content = readFileSync(fileName)
     } catch (error) {
       throw new Error(`Error reading file ${fileName}: ${error.message}`)
