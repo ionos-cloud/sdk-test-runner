@@ -139,7 +139,7 @@ export class TestRunner {
   }
 
   protected async runDeps(test: Test): Promise<TestResult> {
-    this.logDebug(`(${test.name} running dependencies`)
+    this.logDebug(`(${test.name}) running dependencies`)
     if (typeof (test.dependencies) === 'string') {
       test.dependencies = [test.dependencies]
     }
@@ -578,6 +578,11 @@ export class TestRunner {
   }
 
   protected replaceSymbolsInObj(obj: any): any {
+
+    if (obj === null || obj === undefined) {
+      return obj
+    }
+
     if (typeof obj === 'string') return this.replaceSymbols(obj)
 
     if (typeof obj !== 'object') {
