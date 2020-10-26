@@ -30,7 +30,16 @@ export enum TestResult {
   SKIPPED
 }
 
+export enum TestRunnerPhase {
+  SETUP = 0,
+  TESTS,
+  CLEANUP
+}
+
 export class TestRunner {
+
+  protected phase: TestRunnerPhase = TestRunnerPhase.SETUP
+
   protected testSuite: TestSuite = {
     tests: [],
   }
@@ -119,6 +128,7 @@ export class TestRunner {
   }
 
   public async setup() {
+    this.phase = TestRunnerPhase.SETUP
     if (typeof this.testSuite.setup === 'undefined') return
     cliService.info('running setup tests')
     for (const test of this.testSuite.setup) {
@@ -130,6 +140,7 @@ export class TestRunner {
   }
 
   public async cleanup() {
+    this.phase = TestRunnerPhase.CLEANUP
     if (typeof this.testSuite.cleanup === 'undefined') return
     cliService.info('running cleanup tests')
     for (const test of this.testSuite.cleanup) {
@@ -399,7 +410,23 @@ export class TestRunner {
   }
 
   public findTest(name: string): Test | undefined {
-    return this.testSuite.tests?.find((t: Test) => t.name === name)
+    let haystack: Test[] = []
+    switch (this.phase) {
+    case TestRunnerPhase.SETUP:
+      haystack = this.testSuite.setup || []
+      break
+    case TestRunnerPhase.TESTS:
+      haystack = this.testSuite.tests || []
+      break
+    case TestRunnerPhase.CLEANUP:
+      if (this.testSuite.tests !== undefined) {
+        haystack = [...haystack, ...this.testSuite.tests]
+      }
+      if (this.testSuite.cleanup !== undefined) {
+        haystack = [...haystack, ...this.testSuite.cleanup]
+      }
+    }
+    return haystack.find((t: Test) => t.name === name)
   }
 
   public loadTestSuite(suite: string): TestSuite {
@@ -507,6 +534,7 @@ export class TestRunner {
     try {
       await this.setup()
       if (this.testSuite.tests !== undefined) {
+        this.phase = TestRunnerPhase.TESTS
         cliService.info('running tests')
         for (const test of this.testSuite.tests) {
           if (this.selectedTests === undefined || this.selectedTests.includes(test.name)) {
@@ -526,7 +554,9 @@ export class TestRunner {
       stats.skipped = this.skippedTests
       try {
         await this.cleanup()
-      } catch (error) {}
+      } catch (error) {
+        cliService.error(`error during cleanup: ${error.message}`)
+      }
 
       const hrend = process.hrtime(hrstart)
       const duration = getDuration(hrend[0])
