@@ -166,6 +166,7 @@ export class TestRunner {
 
       // eslint-disable-next-line no-await-in-loop
       const outcome = await this.runTest(depTest)
+
       if (this.commandError[depTest.name]) {
         /* dep couldn't run, fail this test also */
         this.failedTests++
@@ -303,6 +304,22 @@ export class TestRunner {
     return {subtasks, collapse}
   }
 
+  protected shouldLoop(test: Test): boolean {
+    if (typeof test.until === 'undefined') {
+      return false;
+    }
+    for (const symbol of Object.keys(test.until)) {
+      const value = this.replaceSymbolsInObj(this.symbolRegistry.get(`${this.replaceSymbols(symbol)}`))
+      try {
+        evalAssertion(value, this.replaceSymbolsInObj(test.until[symbol]))
+      } catch (e) {
+        return true;
+      }
+    }
+    cliService.info('`until` condition met; braking from loop.')
+    return false
+  }
+
   protected buildCleanupSubtasks(parentTask: any): ListrTask<ListrContext>[] {
     return [{
       title: 'cleaning up command results',
@@ -318,11 +335,22 @@ export class TestRunner {
     }]
   }
 
-  protected buildMainTask(test: Test): Listr {
+  protected buildMainTask(test: Test, iteration?: number, maxCount?: number): Listr {
+
     const assertionSubtasks = this.buildAssertionsSubtasks(test)
-    return new Listr([
+
+    let title = `TEST: ${test.name}`;
+    if (iteration != null) {
+      if (maxCount != null) {
+        title += ` ( # ${iteration} / ${maxCount})`
+      } else {
+        title += ` ( # ${iteration})`
+      }
+    }
+
+    const response = new Listr([
       {
-        title: `TEST: ${test.name}`,
+        title: title,
         task: (ctx: any, task: any) => new Listr([
           ...this.buildDriverSubtask(test),
           ...assertionSubtasks.subtasks,
@@ -335,6 +363,8 @@ export class TestRunner {
       // @ts-ignore
       collapse: assertionSubtasks.collapse && !this.verbose && !this.debug,
     })
+
+    return response
   }
 
   /* todo: returning a TestResult and also using this.runResults is a bit wonky */
@@ -372,7 +402,24 @@ export class TestRunner {
     }
 
     try {
-      await this.buildMainTask(test).run()
+      const sleep = (ms: number) => new Promise((resolve, reject) => setTimeout(resolve, ms))
+
+      let iteration = 1;
+      const max_count = test.max_count || 0;
+
+      do {
+        const mainTask = await this.buildMainTask(test, test.repeat ? iteration : undefined, test.repeat ? test.max_count : undefined)
+        this.symbolRegistry.save('loop_iteration', iteration)
+
+        if (iteration > 1 && typeof test.delay_between_iterations !== 'undefined') {
+          cliService.info(`sleeping ${test.delay_between_iterations} ms before next iteration`)
+          await sleep(test.delay_between_iterations)
+        }
+
+        await mainTask.run()
+        iteration++
+      } while( test.repeat && (typeof test.until === 'undefined' || this.shouldLoop(test)) && max_count >= iteration)
+
     } catch (error) {
       if (typeof error.errors !== 'undefined') {
         /* mark test as failed */
