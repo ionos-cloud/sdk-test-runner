@@ -7,10 +7,8 @@ import {TestPayload} from '../models/test-payload'
 import {SymbolRegistry} from './symbol-registry'
 
 import execa from 'execa'
-import {evalAssertion} from '../models/assertion'
+import {Assertion, evalAssertion} from '../models/assertion'
 import cliService from '../services/cli.service'
-
-import Listr = require('listr')
 import {ListrContext, ListrTask, ListrTaskWrapper} from 'listr'
 
 import chalk from 'chalk'
@@ -23,6 +21,7 @@ import {Driver} from '../models/driver'
 import callStackService, {CallStackService} from './call-stack.service'
 import * as path from 'path'
 import deepmerge from 'deepmerge'
+import Listr = require('listr');
 
 export enum TestResult {
   SUCCESS,
@@ -216,16 +215,11 @@ export class TestRunner {
     return TestResult.SUCCESS
   }
 
-  protected async checkExcluded(test: Test): Promise<boolean> {
-    if (!this.excludedTests.includes(test.name)) {
-      return false
-    }
-    /* skip this test */
-    /* display it for the user to know */
+  protected async skipTest(test: Test, reason: string) {
     const mainTask = new Listr([
       {
         title: `TEST: ${test.name}`,
-        skip: () => true,
+        skip: () => reason,
         task: () => '',
       },
     ], {nonTTYRenderer: SimpleListrRenderer, concurrent: false, exitOnError: false})
@@ -237,7 +231,6 @@ export class TestRunner {
 
     this.skippedTests++
     this.runResults[test.name] = TestResult.SKIPPED
-    return true
   }
 
   protected buildDriverSubtask(test: Test): ListrTask<ListrContext>[] {
@@ -277,15 +270,15 @@ export class TestRunner {
     ]
   }
 
-  protected buildAssertionsSubtasks(test: Test): { subtasks: ListrTask<ListrContext>[]; collapse: boolean} {
-    this.printDebug(`(${test.name}) building assertion subtasks`)
+  protected buildAssertionsSubtasks(assertions: {[key: string]: Assertion} | undefined): { subtasks: ListrTask<ListrContext>[]; collapse: boolean} {
+    this.printDebug('building assertion subtasks')
     let collapse = true
     const subtasks: ListrTask<ListrContext>[] = []
-    if (typeof test.assert === 'undefined') {
+    if (typeof assertions === 'undefined') {
       return {subtasks, collapse}
     }
-    for (const symbol of Object.keys(test.assert)) {
-      if (test.assert[symbol].print !== undefined) {
+    for (const symbol of Object.keys(assertions)) {
+      if (assertions[symbol].print !== undefined) {
         /* we want to keep the tests open if we have a print inside them, to keep the message visible */
         collapse = false
       }
@@ -295,7 +288,7 @@ export class TestRunner {
           task: (ctx: any, task: ListrTaskWrapper) => {
             const value = this.replaceSymbolsInObj(this.symbolRegistry.get(`${this.replaceSymbols(symbol)}`))
             task.title += ` = ${JSON.stringify(value)}`
-            return evalAssertion(value, this.replaceSymbolsInObj(test.assert[symbol]))
+            return evalAssertion(value, this.replaceSymbolsInObj(assertions[symbol]))
           },
           skip: ctx => ctx.commandFailure ? 'driver command failed' : false,
         }
@@ -304,19 +297,35 @@ export class TestRunner {
     return {subtasks, collapse}
   }
 
-  protected shouldLoop(test: Test): boolean {
-    if (typeof test.until === 'undefined') {
-      return false;
-    }
-    for (const symbol of Object.keys(test.until)) {
-      const value = this.replaceSymbolsInObj(this.symbolRegistry.get(`${this.replaceSymbols(symbol)}`))
-      try {
-        evalAssertion(value, this.replaceSymbolsInObj(test.until[symbol]))
-      } catch (e) {
-        return true;
+  protected runAssertionGroup(title: string, assertions: {[key: string]: Assertion} | undefined): Promise<any> {
+    const { subtasks, collapse } = this.buildAssertionsSubtasks(assertions)
+    return new Listr(
+      [{
+        title: title,
+        task: () => {
+          return new Listr(subtasks)
+        }
+      }],
+      {
+        nonTTYRenderer: SimpleListrRenderer, concurrent: false,
+        exitOnError: false,
+        // @ts-ignore
+        collapse: collapse && !this.verbose && !this.debug
       }
+    ).run()
+  }
+
+  protected async shouldLoop(test: Test): Promise<boolean> {
+    if (typeof test.until === 'undefined') {
+      return false
     }
-    cliService.info('`until` condition met; braking from loop.')
+    try {
+      await this.runAssertionGroup('checking loop exit conditions', test.until)
+    } catch (error) {
+      return true
+    }
+
+    cliService.info('exit condition met; braking from loop.')
     return false
   }
 
@@ -335,23 +344,38 @@ export class TestRunner {
     }]
   }
 
+  protected buildIfSubtask(test: Test): ListrTask[] {
+    if (test.if === undefined) {
+      return []
+    }
+
+    const {subtasks, collapse} = this.buildAssertionsSubtasks(test.if)
+    return [{
+      title: 'checking `if` conditions',
+      task: () => new Listr(subtasks, {
+        // @ts-ignore
+        collapse: collapse
+      })
+    }]
+  }
+
   protected buildMainTask(test: Test, iteration?: number, maxCount?: number): Listr {
+    const assertionSubtasks = this.buildAssertionsSubtasks(test.assert)
 
-    const assertionSubtasks = this.buildAssertionsSubtasks(test)
-
-    let title = `TEST: ${test.name}`;
-    if (iteration != null) {
-      if (maxCount != null) {
-        title += ` ( # ${iteration} / ${maxCount})`
+    let title = `TEST: ${test.name}`
+    if (typeof iteration !== 'undefined') {
+      if (typeof maxCount === 'undefined') {
+        title += ` ( #${iteration})`
       } else {
-        title += ` ( # ${iteration})`
+        title += ` ( #${iteration} / ${maxCount})`
       }
     }
 
-    const response = new Listr([
+    return new Listr([
       {
         title: title,
         task: (ctx: any, task: any) => new Listr([
+          ...this.buildIfSubtask(test),
           ...this.buildDriverSubtask(test),
           ...assertionSubtasks.subtasks,
           ...this.buildCleanupSubtasks(task),
@@ -363,8 +387,6 @@ export class TestRunner {
       // @ts-ignore
       collapse: assertionSubtasks.collapse && !this.verbose && !this.debug,
     })
-
-    return response
   }
 
   /* todo: returning a TestResult and also using this.runResults is a bit wonky */
@@ -388,10 +410,13 @@ export class TestRunner {
     this.printDebug(`running test ${test.name}`)
 
     /* check if the test was excluded from the run-set */
-    if (await this.checkExcluded(test)) {
+    if (this.excludedTests.includes(test.name)) {
+      await this.skipTest(test, 'excluded by user')
       callStackService.pop()
       return this.runResults[test.name]
     }
+
+    /* check the if clause */
 
     /* solve dependencies */
     const depsResult = await this.runDeps(test)
@@ -400,31 +425,31 @@ export class TestRunner {
       /* deps failed or were skipped */
       return depsResult
     }
-
     try {
-      const sleep = (ms: number) => new Promise((resolve, reject) => setTimeout(resolve, ms))
+      const sleep = (ms: number) => new Promise((resolve, _) => setTimeout(resolve, ms))
 
-      let iteration = 1;
-      const max_count = test.max_count || 0;
-
+      let iteration = 1
+      const max_count = test.max_count || 0
+      let doContinue = false
       do {
         const mainTask = await this.buildMainTask(test, test.repeat ? iteration : undefined, test.repeat ? test.max_count : undefined)
         this.symbolRegistry.save('loop_iteration', iteration)
-
         if (iteration > 1 && typeof test.delay_between_iterations !== 'undefined') {
           cliService.info(`sleeping ${test.delay_between_iterations} ms before next iteration`)
+          // eslint-disable-next-line no-await-in-loop
           await sleep(test.delay_between_iterations)
         }
-
         await mainTask.run()
         iteration++
-      } while( test.repeat && (typeof test.until === 'undefined' || this.shouldLoop(test)) && max_count >= iteration)
-
+        doContinue = typeof test.until === 'undefined' || await this.shouldLoop(test)
+      } while (test.repeat && doContinue && max_count >= iteration)
     } catch (error) {
       if (typeof error.errors !== 'undefined') {
         /* mark test as failed */
         this.failedTests++
         ret = TestResult.FAILED
+      } else {
+        throw error
       }
     } finally {
       debugService.flush()
@@ -655,7 +680,6 @@ export class TestRunner {
   }
 
   protected replaceSymbolsInObj(obj: any): any {
-
     if (obj === null || obj === undefined) {
       return obj
     }

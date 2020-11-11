@@ -2,5 +2,10 @@
   "extends": [
     "oclif",
     "oclif-typescript"
-  ]
+  ],
+  "rules": {
+    "no-await-in-loop": "off",
+    "comma-dangle": "off",
+    "object-curly-spacing": "off"
+  }
 }

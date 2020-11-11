@@ -11,4 +11,5 @@ export interface Test {
   save?: { [key: string]: string };
   dependencies?: Array<string> | string;
   assert: { [key: string]: Assertion };
+  if?: { [key: string]: Assertion };
 }
