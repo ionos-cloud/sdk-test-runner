@@ -661,7 +661,7 @@ export class TestRunner {
           let filter: Filter | undefined
           if (symbol.includes('|')) {
             /* we have a filter */
-            const [symbolName, filterName] = symbol.split('|').map(x => x.trim())
+            const [symbolName, filterName] = symbol.split('|').map((x: string) => x.trim())
             symbol = symbolName
             filter = filterService.get(filterName)
             if (filter === undefined) {
