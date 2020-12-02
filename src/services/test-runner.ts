@@ -301,6 +301,11 @@ export class TestRunner {
 
   protected runAssertionGroup(title: string, assertions: {[key: string]: Assertion} | undefined): Promise<any> {
     const { subtasks, collapse } = this.buildAssertionsSubtasks(assertions)
+    const listrOptions = {
+      nonTTYRenderer: SimpleListrRenderer, concurrent: false,
+      exitOnError: false,
+      collapse: collapse && !this.verbose && !this.debug
+    }
     return new Listr(
       [{
         title: title,
@@ -308,12 +313,7 @@ export class TestRunner {
           return new Listr(subtasks)
         }
       }],
-      {
-        nonTTYRenderer: SimpleListrRenderer, concurrent: false,
-        exitOnError: false,
-        // @ts-ignore
-        collapse: collapse && !this.verbose && !this.debug
-      }
+      listrOptions
     ).run()
   }
 
@@ -352,12 +352,14 @@ export class TestRunner {
     }
 
     const {subtasks, collapse} = this.buildAssertionsSubtasks(test.if)
+    const listrOptions = {
+      concurrent: false,
+      nonTTYRenderer: SimpleListrRenderer,
+      collapse: collapse
+    }
     return [{
       title: 'checking `if` conditions',
-      task: () => new Listr(subtasks, {
-        // @ts-ignore
-        collapse: collapse
-      })
+      task: () => new Listr(subtasks, listrOptions)
     }]
   }
 
@@ -373,6 +375,11 @@ export class TestRunner {
       }
     }
 
+    const listrOptions = {
+      nonTTYRenderer: SimpleListrRenderer, concurrent: false,
+      exitOnError: false,
+      collapse: assertionSubtasks.collapse && !this.verbose && !this.debug,
+    }
     return new Listr([
       {
         title: title,
@@ -383,15 +390,10 @@ export class TestRunner {
           ...this.buildCleanupSubtasks(task),
         ], {concurrent: false, exitOnError: false}),
       },
-    ], {
-      nonTTYRenderer: SimpleListrRenderer, concurrent: false,
-      exitOnError: false,
-      // @ts-ignore
-      collapse: assertionSubtasks.collapse && !this.verbose && !this.debug,
-    })
+    ], listrOptions
+    )
   }
 
-  /* todo: returning a TestResult and also using this.runResults is a bit wonky */
   public async runTest(test: Test): Promise<TestResult> {
     let ret = TestResult.SUCCESS
 
@@ -654,24 +656,25 @@ export class TestRunner {
     do {
       found = false
       const tokens = ret.match(/\${[a-zA-Z0-9_/!@#%^&*()\s|.[\]-]+}/)
-      if (tokens !== null && Array.isArray(tokens)) {
-        found = true
-        for (const token of tokens) {
-          let symbol = token.substring(2, token.length - 1)
-          let filter: Filter | undefined
-          if (symbol.includes('|')) {
-            /* we have a filter */
-            const [symbolName, filterName] = symbol.split('|').map((x: string) => x.trim())
-            symbol = symbolName
-            filter = filterService.get(filterName)
-            if (filter === undefined) {
-              throw new Error(`unknown filter ${filterName}`)
-            }
+      if (tokens === null || !Array.isArray(tokens)) {
+        break
+      }
+      found = true
+      for (const token of tokens) {
+        let symbol = token.substring(2, token.length - 1)
+        let filter: Filter | undefined
+        if (symbol.includes('|')) {
+          /* we have a filter */
+          const [symbolName, filterName] = symbol.split('|').map((x: string) => x.trim())
+          symbol = symbolName
+          filter = filterService.get(filterName)
+          if (filter === undefined) {
+            throw new Error(`unknown filter ${filterName}`)
           }
-          ret = ret.replace(token, this.symbolRegistry.get(symbol))
-          if (filter !== undefined) {
-            ret = filter.process(ret)
-          }
+        }
+        ret = ret.replace(token, this.symbolRegistry.get(symbol))
+        if (filter !== undefined) {
+          ret = filter.process(ret)
         }
       }
     } while (found && (typeof ret === 'string'))

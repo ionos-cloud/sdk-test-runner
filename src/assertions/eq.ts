@@ -1,5 +1,4 @@
-import {AssertionFailed} from "../exceptions/assertion-failed";
-import {strict} from "assert";
+import {AssertionFailed} from '../exceptions/assertion-failed'
 
 export function objectEquals(o1: any, o2: any): boolean {
   if (typeof o1 !== typeof o2) {

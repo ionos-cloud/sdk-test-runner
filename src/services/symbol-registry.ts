@@ -9,7 +9,6 @@ export class SymbolRegistry {
   }
 
   public get(key: string): any {
-
     if (key.includes('.')) {
       /* json path */
       const path = '$.' + key.substr(key.indexOf('.') + 1)

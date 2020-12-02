@@ -38,12 +38,11 @@ const assertionRegistry: {[key: string]: AssertionFunc} = {
 export function evalAssertion(value: any, assertion: Assertion): Listr {
   const subtasks = []
 
-  for (const key of Object.keys(assertion)) {
+  for (const key of Object.keys(assertion) as Array<keyof Assertion>) {
     subtasks.push({
       title: `${key}`,
       task: async (ctx: any, task: any) => {
         const assertFunc = assertionRegistry[key]
-        // @ts-ignore
         const expected = assertion[key]
         if (assertFunc === null) {
           throw new Error(`assertion type '${key}' is unknown`)

@@ -8,18 +8,10 @@ export class CliService {
 
   protected buildIndent() {
     let indent = ''
-    for (let i = 0; i < this.indentLevel; i ++) {
+    for (let i = 0; i < this.indentLevel; i++) {
       indent += this.indentString
     }
     return indent
-  }
-
-  public setIndentString(str: string) {
-    this.indentString = str
-  }
-
-  public getIndentString() {
-    return this.indentString
   }
 
   public indent(amount = 1) {

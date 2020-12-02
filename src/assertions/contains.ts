@@ -1,4 +1,3 @@
-import {objectEquals} from './eq'
 import {AssertionFailed} from '../exceptions/assertion-failed'
 
 export function contains(ctx: any, task: any, value: any, condition: any) {
