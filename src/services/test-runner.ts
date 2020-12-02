@@ -649,7 +649,7 @@ export class TestRunner {
   }
 
   protected replaceSymbols(str: string): string | number {
-    let ret: string = str
+    let ret: any = str
     let found = false
     do {
       found = false
@@ -674,7 +674,7 @@ export class TestRunner {
           }
         }
       }
-    } while (found)
+    } while (found && (typeof ret === 'string'))
 
     return ret
   }
