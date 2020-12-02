@@ -5,6 +5,7 @@ import driverService from '../services/driver.service'
 import configService from '../services/config.service'
 import {Command} from '@oclif/command'
 import {Driver} from '../models/driver'
+import '../filters'
 
 export default class Run extends Command {
   static description = 'Runs a test suite from a JSON test specification.'

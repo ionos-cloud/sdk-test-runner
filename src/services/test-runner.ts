@@ -9,7 +9,7 @@ import {SymbolRegistry} from './symbol-registry'
 import execa from 'execa'
 import {Assertion, evalAssertion} from '../models/assertion'
 import cliService from '../services/cli.service'
-import {ListrContext, ListrTask, ListrTaskWrapper} from 'listr'
+import {ListrTask, ListrTaskWrapper} from 'listr'
 
 import chalk from 'chalk'
 import debugService from './buffered-debug.service'
@@ -19,6 +19,9 @@ import {RunStats} from '../models/run-stats'
 import {Driver} from '../models/driver'
 
 import callStackService, {CallStackService} from './call-stack.service'
+
+import filterService, {Filter} from '../services/filter.service'
+
 import * as path from 'path'
 import deepmerge from 'deepmerge'
 import Listr = require('listr');
@@ -36,7 +39,6 @@ export enum TestRunnerPhase {
 }
 
 export class TestRunner {
-
   protected phase: TestRunnerPhase = TestRunnerPhase.SETUP
 
   protected testSuite: TestSuite = {
@@ -233,7 +235,7 @@ export class TestRunner {
     this.runResults[test.name] = TestResult.SKIPPED
   }
 
-  protected buildDriverSubtask(test: Test): ListrTask<ListrContext>[] {
+  protected buildDriverSubtask(test: Test): ListrTask[] {
     this.printDebug(`(${test.name}) building driver subtask`)
     return [
       {
@@ -270,10 +272,10 @@ export class TestRunner {
     ]
   }
 
-  protected buildAssertionsSubtasks(assertions: {[key: string]: Assertion} | undefined): { subtasks: ListrTask<ListrContext>[]; collapse: boolean} {
+  protected buildAssertionsSubtasks(assertions: {[key: string]: Assertion} | undefined): { subtasks: ListrTask[]; collapse: boolean} {
     this.printDebug('building assertion subtasks')
     let collapse = true
-    const subtasks: ListrTask<ListrContext>[] = []
+    const subtasks: ListrTask[] = []
     if (typeof assertions === 'undefined') {
       return {subtasks, collapse}
     }
@@ -329,7 +331,7 @@ export class TestRunner {
     return false
   }
 
-  protected buildCleanupSubtasks(parentTask: any): ListrTask<ListrContext>[] {
+  protected buildCleanupSubtasks(parentTask: any): ListrTask[] {
     return [{
       title: 'cleaning up command results',
       task: async ctx => {
@@ -649,7 +651,6 @@ export class TestRunner {
   protected replaceSymbols(str: string): string | number {
     let ret: string = str
     let found = false
-    let isNumber = false
     do {
       found = false
       const tokens = ret.match(/\${[a-zA-Z0-9_/!@#%^&*()\s|.[\]-]+}/)
@@ -657,24 +658,23 @@ export class TestRunner {
         found = true
         for (const token of tokens) {
           let symbol = token.substring(2, token.length - 1)
+          let filter: Filter | undefined
           if (symbol.includes('|')) {
             /* we have a filter */
             const [symbolName, filterName] = symbol.split('|').map(x => x.trim())
             symbol = symbolName
-            if (filterName.toLowerCase() === 'number') {
-              isNumber = true
-            } else {
+            filter = filterService.get(filterName)
+            if (filter === undefined) {
               throw new Error(`unknown filter ${filterName}`)
             }
           }
           ret = ret.replace(token, this.symbolRegistry.get(symbol))
+          if (filter !== undefined) {
+            ret = filter.process(ret)
+          }
         }
       }
     } while (found)
-
-    if (isNumber) {
-      return Number(ret)
-    }
 
     return ret
   }
