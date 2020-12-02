@@ -19,7 +19,7 @@ $ npm install -g @cloudsdk/test-runner
 $ csdk-test-runner COMMAND
 running command...
 $ csdk-test-runner (-v|--version|version)
-@cloudsdk/test-runner/1.7.0-beta.0 darwin-x64 node-v14.15.0
+@cloudsdk/test-runner/1.7.0-beta.1 darwin-x64 node-v14.15.0
 $ csdk-test-runner --help [COMMAND]
 USAGE
   $ csdk-test-runner COMMAND
