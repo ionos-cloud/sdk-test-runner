@@ -6,6 +6,7 @@ import configService from '../services/config.service'
 import {Command} from '@oclif/command'
 import {Driver} from '../models/driver'
 import '../filters'
+import '../functions'
 
 export default class Run extends Command {
   static description = 'Runs a test suite from a JSON test specification.'
@@ -64,6 +65,7 @@ export default class Run extends Command {
 
   async run() {
     const {args, flags} = this.parse(Run)
+    configService.setDebug(flags.debug).setVerbose(flags.verbose)
 
     /* first of all check credentials env vars */
     if (process.env.IONOS_USERNAME === undefined) {
@@ -108,7 +110,7 @@ export default class Run extends Command {
       cliService.info(`excluding tests ${flags.exclude}`)
       testRunner.excludeTests(flags.exclude)
     }
-    testRunner.setDebug(flags.debug).setVerbose(flags.verbose)
+
     const stats = await testRunner.run()
     if (stats.failed > 0) {
       this.error('test run ended with failed tests')

@@ -17,14 +17,14 @@ import {formatDuration, getDuration} from '../utils/misc'
 import {SimpleListrRenderer} from '../utils/simple-listr-renderer'
 import {RunStats} from '../models/run-stats'
 import {Driver} from '../models/driver'
-
+import {Parser} from '../utils/parser'
 import callStackService, {CallStackService} from './call-stack.service'
-
-import filterService, {Filter} from '../services/filter.service'
+import configService from './config.service'
 
 import * as path from 'path'
 import deepmerge from 'deepmerge'
-import Listr = require('listr');
+
+import Listr = require('listr')
 
 export enum TestResult {
   SUCCESS,
@@ -51,6 +51,8 @@ export class TestRunner {
 
   protected symbolRegistry: SymbolRegistry
 
+  protected parser: Parser
+
   protected driver: Driver
 
   protected failedTests = 0
@@ -61,41 +63,12 @@ export class TestRunner {
 
   protected excludedTests: string[] = []
 
-  protected debug = false
-
-  protected verbose = false
-
   protected includeStack: CallStackService = new CallStackService()
 
   constructor(driver: Driver) {
     this.driver = driver
     this.symbolRegistry = new SymbolRegistry()
-  }
-
-  public setDebug(d: boolean): this {
-    this.debug = d
-    return this
-  }
-
-  public setVerbose(v: boolean): this {
-    this.verbose = v
-    return this
-  }
-
-  protected logDebug(msg: string) {
-    if (this.debug) {
-      /* we need to save this in a buffer and flush it after Listr finishes, otherwise
-       * Listr's output will overwrite whatever all our logs if we use a tty */
-      debugService.log(msg)
-    }
-  }
-
-  /* directly print a debug message - careful: the text will be erased by Listr output if used in
-   * the middle of a Listr task */
-  protected printDebug(msg: any) {
-    if (this.debug) {
-      cliService.debug(msg)
-    }
+    this.parser = new Parser(this.symbolRegistry)
   }
 
   protected findTestAnywhere(name: string): boolean {
@@ -151,7 +124,7 @@ export class TestRunner {
   }
 
   protected async runDeps(test: Test): Promise<TestResult> {
-    this.logDebug(`(${test.name}) running dependencies`)
+    debugService.log(`(${test.name}) running dependencies`)
     if (typeof (test.dependencies) === 'string') {
       test.dependencies = [test.dependencies]
     }
@@ -236,7 +209,7 @@ export class TestRunner {
   }
 
   protected buildDriverSubtask(test: Test): ListrTask[] {
-    this.printDebug(`(${test.name}) building driver subtask`)
+    debugService.print(`(${test.name}) building driver subtask`)
     return [
       {
         title: 'running driver command',
@@ -245,10 +218,10 @@ export class TestRunner {
           ctx.startTime = process.hrtime()
           let result = null
           try {
-            result = await this.runCommand(this.replaceSymbolsInObj(test.payload))
+            result = await this.runCommand(this.parser.parseObj(test.payload))
             this.commandError[test.name] = false
           } catch (error) {
-            this.logDebug(`command error: ${error}`)
+            debugService.log(`command error: ${error}`)
             this.commandError[test.name] = true
             ctx.commandFailure = true
             throw error
@@ -273,7 +246,7 @@ export class TestRunner {
   }
 
   protected buildAssertionsSubtasks(assertions: {[key: string]: Assertion} | undefined): { subtasks: ListrTask[]; collapse: boolean} {
-    this.printDebug('building assertion subtasks')
+    debugService.print('building assertion subtasks')
     let collapse = true
     const subtasks: ListrTask[] = []
     if (typeof assertions === 'undefined') {
@@ -288,9 +261,9 @@ export class TestRunner {
         {
           title: `evaluating '${symbol}'`,
           task: (ctx: any, task: ListrTaskWrapper) => {
-            const value = this.replaceSymbolsInObj(this.symbolRegistry.get(`${this.replaceSymbols(symbol)}`))
+            const value = this.parser.parseObj(this.symbolRegistry.get(`${this.parser.parse(symbol)}`))
             task.title += ` = ${JSON.stringify(value)}`
-            return evalAssertion(value, this.replaceSymbolsInObj(assertions[symbol]))
+            return evalAssertion(value, this.parser.parseObj(assertions[symbol]))
           },
           skip: ctx => ctx.commandFailure ? 'driver command failed' : false,
         }
@@ -304,7 +277,7 @@ export class TestRunner {
     const listrOptions = {
       nonTTYRenderer: SimpleListrRenderer, concurrent: false,
       exitOnError: false,
-      collapse: collapse && !this.verbose && !this.debug
+      collapse: collapse && !configService.isVerbose() && !configService.isDebug()
     }
     return new Listr(
       [{
@@ -378,7 +351,7 @@ export class TestRunner {
     const listrOptions = {
       nonTTYRenderer: SimpleListrRenderer, concurrent: false,
       exitOnError: false,
-      collapse: assertionSubtasks.collapse && !this.verbose && !this.debug,
+      collapse: assertionSubtasks.collapse && !configService.isVerbose() && !configService.isDebug(),
     }
     return new Listr([
       {
@@ -411,7 +384,7 @@ export class TestRunner {
       return this.runResults[test.name]
     }
 
-    this.printDebug(`running test ${test.name}`)
+    debugService.print(`running test ${test.name}`)
 
     /* check if the test was excluded from the run-set */
     if (this.excludedTests.includes(test.name)) {
@@ -469,18 +442,18 @@ export class TestRunner {
   protected async runCommand(payload: TestPayload): Promise<string> {
     try {
       const input = JSON.stringify(payload)
-      this.logDebug(`${chalk.yellow('driver input')}: ${input}`)
+      debugService.log(`${chalk.yellow('driver input')}: ${input}`)
       const options: execa.Options = {
         input,
         cwd: (typeof this.driver.cwd === 'undefined') ? process.cwd() : this.driver.cwd,
       }
       const subprocess = execa(this.driver.command, this.driver.args, options)
       const out = await subprocess
-      this.logDebug(`${chalk.yellow('driver output')}: ${out.stdout}`)
-      this.logDebug(`${chalk.yellow('driver stderr')}: ${out.stderr}`)
+      debugService.log(`${chalk.yellow('driver output')}: ${out.stdout}`)
+      debugService.log(`${chalk.yellow('driver stderr')}: ${out.stderr}`)
       return out.stdout
     } catch (error) {
-      this.logDebug(`${chalk.yellowBright('driver error')}: ${error.message}`)
+      debugService.log(`${chalk.yellowBright('driver error')}: ${error.message}`)
       throw new Error(`Error running command ${this.driver.command}: ${error.message}`)
     }
   }
@@ -519,7 +492,7 @@ export class TestRunner {
     for (const inc of testSuite.include) {
       let content: Buffer
       try {
-        this.printDebug(`loading included file ${inc}`)
+        debugService.print(`loading included file ${inc}`)
         this.includeStack.push(path.basename(inc))
         content = readFileSync(inc)
       } catch (error) {
@@ -562,7 +535,7 @@ export class TestRunner {
     let content: Buffer
     try {
       this.includeStack.push(path.basename(fileName))
-      this.printDebug(`loading file ${fileName}`)
+      debugService.print(`loading file ${fileName}`)
       content = readFileSync(fileName)
     } catch (error) {
       throw new Error(`Error reading file ${fileName}: ${error.message}`)
@@ -577,7 +550,7 @@ export class TestRunner {
       /* not replacing symbols in data[key] here to allow this to happen
        * later on, after this data is saved in the registry, otherwise we would get
        * undefined now */
-      processedData[this.replaceSymbols(key)] = data[key]
+      processedData[this.parser.parse(key)] = this.parser.runFunctions(data[key])
     }
     this.symbolRegistry.save('data', processedData)
   }
@@ -596,7 +569,7 @@ export class TestRunner {
       this.saveData(this.testSuite.data)
     }
 
-    this.printDebug('symbol registry: ' + this.symbolRegistry.dump())
+    debugService.print('symbol registry: ' + this.symbolRegistry.dump())
     const stats: RunStats = {
       total: 0,
       failed: 0,
@@ -648,62 +621,6 @@ export class TestRunner {
       cliService.info(`Duration: ${formatDuration(duration, hrend[1] / 1000000)}`)
     }
     return stats
-  }
-
-  protected replaceSymbols(str: string): string | number {
-    let ret: any = str
-    let found = false
-    do {
-      found = false
-      const tokens = ret.match(/\${[a-zA-Z0-9_/!@#%^&*()\s|.[\]-]+}/)
-      if (tokens === null || !Array.isArray(tokens)) {
-        break
-      }
-      found = true
-      for (const token of tokens) {
-        let symbol = token.substring(2, token.length - 1)
-        let filter: Filter | undefined
-        if (symbol.includes('|')) {
-          /* we have a filter */
-          const [symbolName, filterName] = symbol.split('|').map((x: string) => x.trim())
-          symbol = symbolName
-          filter = filterService.get(filterName)
-          if (filter === undefined) {
-            throw new Error(`unknown filter ${filterName}`)
-          }
-        }
-        ret = ret.replace(token, this.symbolRegistry.get(symbol))
-        if (filter !== undefined) {
-          ret = filter.process(ret)
-        }
-      }
-    } while (found && (typeof ret === 'string'))
-
-    return ret
-  }
-
-  protected replaceSymbolsInObj(obj: any): any {
-    if (obj === null || obj === undefined) {
-      return obj
-    }
-
-    if (typeof obj === 'string') return this.replaceSymbols(obj)
-
-    if (typeof obj !== 'object') {
-      return obj
-    }
-
-    if (Array.isArray(obj)) {
-      return (obj as Array<any>).map(el => this.replaceSymbolsInObj(el))
-    }
-
-    const ret: {[key: string]: any} = {}
-
-    for (const key of Object.keys(obj)) {
-      ret[this.replaceSymbols(key)] = this.replaceSymbolsInObj(obj[key])
-    }
-
-    return ret
   }
 }
 
