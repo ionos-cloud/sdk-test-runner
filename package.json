@@ -1,7 +1,7 @@
 {
   "name": "@cloudsdk/test-runner",
   "description": "Cloud SDK Test Runner",
-  "version": "1.7.0-beta.1",
+  "version": "1.7.0",
   "author": "Florin Mihalache",
   "bin": {
     "csdk-test-runner": "./bin/run"
