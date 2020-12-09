@@ -39,7 +39,10 @@ export class Parser {
       }
     } while (found && (typeof ret === 'string'))
 
-    return this.runFunctions(ret)
+    if (typeof ret === 'string') {
+      return this.runFunctions(ret)
+    }
+    return ret
   }
 
   public parseObj(obj: any): any {
