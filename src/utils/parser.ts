@@ -69,7 +69,6 @@ export class Parser {
   public runFunctions(str: string): string {
     let ret: string = str
     const tokens = ret.matchAll(/@([a-zA-Z0-9_.-]+)\(([a-zA-Z0-9,_./!@#%^&*[\]\s-]*)\)/g)
-    debugService.log('running functions')
     for (const match of [...tokens]) {
       /* this will be replaced with the result of the function call */
       const fullMatch = match[0]

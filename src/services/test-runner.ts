@@ -550,7 +550,11 @@ export class TestRunner {
       /* not replacing symbols in data[key] here to allow this to happen
        * later on, after this data is saved in the registry, otherwise we would get
        * undefined now */
-      processedData[this.parser.parse(key)] = this.parser.runFunctions(data[key])
+      if (typeof data[key] === 'string') {
+        processedData[this.parser.parse(key)] = this.parser.runFunctions(data[key])
+      } else {
+        processedData[this.parser.parse(key)] = data[key]
+      }
     }
     this.symbolRegistry.save('data', processedData)
   }
