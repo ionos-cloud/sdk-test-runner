@@ -39,8 +39,12 @@ export class SimpleListrRenderer {
         (event: any) => {
           switch (event.type) {
           case 'STATE':
-            if ((task.state === 'completed' || task.hasFailed() || task.isSkipped()) && (task.title.startsWith('TEST:'))) {
-              cliService.info(`${task.title} [${task.state}]`)
+            if ((task.state === 'pending' || task.state === 'completed' || task.hasFailed() || task.isSkipped()) && (task.title.startsWith('TEST:'))) {
+              if (task.isPending() && !task.isStopped) {
+                cliService.info(`${task.title} [started]`)
+              } else {
+                cliService.info(`${task.title} [${task.state}]`)
+              }
               if (task.isSkipped()) {
                 /* display reason for skipping */
                 cliService.indent()

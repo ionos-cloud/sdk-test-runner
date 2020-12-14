@@ -426,6 +426,7 @@ export class TestRunner {
         this.failedTests++
         ret = TestResult.FAILED
       } else {
+        debugService.flush()
         throw error
       }
     } finally {
@@ -589,10 +590,18 @@ export class TestRunner {
       if (this.testSuite.tests !== undefined) {
         this.phase = TestRunnerPhase.TESTS
         cliService.info('running tests')
+        let i = 0
         for (const test of this.testSuite.tests) {
+          i++
           if (this.selectedTests === undefined || this.selectedTests.includes(test.name)) {
             // eslint-disable-next-line no-await-in-loop
-            await this.runTest(test)
+            const testResult = await this.runTest(test)
+            if (configService.isFailfast() && testResult === TestResult.FAILED) {
+              /* test failed and --fail-fast option enabled, bail out now */
+              cliService.info('Test failed and the --fail-fast option is enabled; bailing out.')
+              this.skippedTests += this.testSuite.tests.length - i
+              break
+            }
           } else {
             this.skippedTests++
           }

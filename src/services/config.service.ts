@@ -15,6 +15,8 @@ export class ConfigService {
 
   private verbose = false
 
+  private failFast = false
+
   public setDebug(d: boolean): this {
     this.debug = d
     return this
@@ -25,12 +27,21 @@ export class ConfigService {
     return this
   }
 
+  public setFailFast(v: boolean): this {
+    this.failFast = v
+    return this
+  }
+
   public isDebug(): boolean {
     return this.debug
   }
 
   public isVerbose(): boolean {
     return this.verbose
+  }
+
+  public isFailfast(): boolean {
+    return this.failFast
   }
 
   public async init(dir: string) {

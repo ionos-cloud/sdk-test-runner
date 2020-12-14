@@ -33,6 +33,11 @@ export default class Run extends Command {
       required: false,
       description: 'language driver to use; path and args are taken from config',
     }),
+    'fail-fast': flags.boolean({
+      char: 'f',
+      description: 'exit with failure as soon as a test fails',
+      default: false,
+    }),
     'driver-path': flags.string({
       required: false,
       exclusive: ['driver'],
@@ -95,6 +100,8 @@ export default class Run extends Command {
     if (args.file === undefined) {
       throw new Error('No test file specified')
     }
+
+    configService.setFailFast(flags['fail-fast'])
 
     cliService.info(`using driver ${driver.name}`)
     cliService.info(`driver command is: ${driver.command} ${driver.args.join(' ')}`)
