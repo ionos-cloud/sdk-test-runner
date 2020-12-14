@@ -1,4 +1,6 @@
 import cliService from '../services/cli.service'
+import {TestKind} from "../models/test";
+import {Test} from "mocha";
 
 export class SimpleListrRenderer {
   protected _tasks: any[] = []
@@ -33,13 +35,17 @@ export class SimpleListrRenderer {
     cliService.outdent()
   }
 
+  isTest(title: string) {
+    return title.startsWith(TestKind.SETUP.toUpperCase()) || title.startsWith(TestKind.CLEANUP.toUpperCase()) || title.startsWith(TestKind.TEST.toUpperCase())
+  }
+
   render() {
     for (const task of this._tasks) {
       task.subscribe(
         (event: any) => {
           switch (event.type) {
           case 'STATE':
-            if ((task.state === 'pending' || task.state === 'completed' || task.hasFailed() || task.isSkipped()) && (task.title.startsWith('TEST'))) {
+            if ((task.state === 'pending' || task.state === 'completed' || task.hasFailed() || task.isSkipped()) && (this.isTest(task.title))) {
               if (task.isPending() && !task.isStopped) {
                 cliService.info(`${task.title} [started]`)
               } else {

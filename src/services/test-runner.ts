@@ -1,5 +1,5 @@
 import {TestSuite} from '../models/test-suite'
-import {Test} from '../models/test'
+import {Test, TestKind} from '../models/test'
 
 import {readFileSync} from 'fs'
 import {TestPayload} from '../models/test-payload'
@@ -24,7 +24,7 @@ import configService from './config.service'
 import * as path from 'path'
 import deepmerge from 'deepmerge'
 
-import Listr = require('listr')
+import Listr = require('listr');
 
 export enum TestResult {
   SUCCESS,
@@ -194,8 +194,20 @@ export class TestRunner {
     return TestResult.SUCCESS
   }
 
-  protected getTestTitle(test: Test, prefix = 'TEST') {
-    return `${prefix} (${test.id}/${this.testSuite.tests?.length}): ${test.name}`
+  protected getTestTitle(test: Test) {
+    let total = 0
+    switch (test.kind) {
+    case TestKind.CLEANUP:
+      total = this.testSuite.cleanup?.length || 0
+      break
+    case TestKind.SETUP:
+      total = this.testSuite.setup?.length || 0
+      break
+    case TestKind.TEST:
+      total = this.testSuite.tests?.length || 0
+      break
+    }
+    return `${test.kind.toUpperCase()} (${test.id}/${total}): ${test.name}`
   }
 
   protected async skipTest(test: Test, reason: string) {
@@ -584,14 +596,17 @@ export class TestRunner {
   protected genIds() {
     this.testSuite.tests?.forEach((t, id) => {
       t.id = id + 1
+      t.kind = TestKind.TEST
     })
 
     this.testSuite.setup?.forEach((t, id) => {
       t.id = id + 1
+      t.kind = TestKind.SETUP
     })
 
     this.testSuite.cleanup?.forEach((t, id) => {
       t.id = id + 1
+      t.kind = TestKind.CLEANUP
     })
   }
 

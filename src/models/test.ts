@@ -1,9 +1,16 @@
 import {TestPayload} from './test-payload'
 import {Assertion} from './assertion'
 
+export enum TestKind {
+  SETUP = 'setup',
+  TEST = 'test',
+  CLEANUP = 'cleanup'
+}
+
 export interface Test {
   id: number;
   name: string;
+  kind: TestKind;
   payload: TestPayload;
   repeat?: boolean;
   until?: { [key: string]: Assertion };
