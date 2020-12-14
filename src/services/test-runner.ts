@@ -150,7 +150,7 @@ export class TestRunner {
         /* display it for the user to know */
         const mainTask = new Listr([
           {
-            title: `TEST: ${test.name}`,
+            title: this.getTestTitle(test),
             task: () => {
               throw new Error(`dependency '${depTest.name}' failed to run`)
             },
@@ -173,10 +173,9 @@ export class TestRunner {
         this.runResults[test.name] = TestResult.SKIPPED
         this.skippedTests++
         try {
-          // eslint-disable-next-line no-await-in-loop
           await new Listr([
             {
-              title: `TEST: ${test.name}`,
+              title: this.getTestTitle(test),
               task: () => '',
               skip: () => `dependency '${depTest.name}' ${reason}`,
             },
@@ -190,18 +189,19 @@ export class TestRunner {
     return TestResult.SUCCESS
   }
 
+  protected getTestTitle(test: Test, prefix = 'TEST') {
+    return `${prefix} (${test.id}/${this.testSuite.tests?.length}): ${test.name}`
+  }
+
   protected async skipTest(test: Test, reason: string) {
     const mainTask = new Listr([
       {
-        title: `TEST: ${test.name}`,
+        title: this.getTestTitle(test),
         skip: () => reason,
         task: () => '',
       },
     ], {nonTTYRenderer: SimpleListrRenderer, concurrent: false, exitOnError: false})
 
-    // eslint-disable-next-line max-depth
-
-    // eslint-disable-next-line no-await-in-loop
     await mainTask.run()
 
     this.skippedTests++
@@ -339,12 +339,12 @@ export class TestRunner {
   protected buildMainTask(test: Test, iteration?: number, maxCount?: number): Listr {
     const assertionSubtasks = this.buildAssertionsSubtasks(test.assert)
 
-    let title = `TEST: ${test.name}`
+    let title = this.getTestTitle(test)
     if (typeof iteration !== 'undefined') {
       if (typeof maxCount === 'undefined') {
-        title += ` ( #${iteration})`
+        title += ` ( loop #${iteration} )`
       } else {
-        title += ` ( #${iteration} / ${maxCount})`
+        title += ` ( loop #${iteration} / ${maxCount} )`
       }
     }
 
@@ -479,6 +479,60 @@ export class TestRunner {
     return haystack.find((t: Test) => t.name === name)
   }
 
+  protected unshiftIt(into: any[] | undefined, what: any[]): any[] {
+    if (into === undefined) {
+      return [...what]
+    }
+    return [...what, ...into]
+  }
+
+  protected checkDuplicateNames(suite: TestSuite) {
+    if (suite.tests === undefined) {
+      return
+    }
+    /* check for duplicate test names */
+    const names: {[key: string]: boolean} = {}
+    for (const test of suite.tests) {
+      if (names[test.name] !== undefined) {
+        throw new Error(`test '${test.name}' defined multiple times`)
+      }
+      names[test.name] = true
+    }
+  }
+
+  protected addIncludedTests(included: TestSuite[], testSuite: TestSuite) {
+    const includedTests: Test[] = []
+    const includedSetup: Test[] = []
+    const includedCleanup: Test[] = []
+    let includedData: {[key: string]: any} = {}
+    for (const subTestSuite of included) {
+      if (subTestSuite.tests !== undefined) {
+        includedTests.push(...subTestSuite.tests)
+      }
+      if (subTestSuite.setup !== undefined) {
+        includedSetup.push(...subTestSuite.setup)
+      }
+
+      if (subTestSuite.cleanup !== undefined) {
+        includedCleanup.push(...subTestSuite.cleanup)
+      }
+
+      if (subTestSuite.data !== undefined) {
+        includedData = deepmerge.all([includedData, subTestSuite.data])
+      }
+    }
+
+    testSuite.tests = this.unshiftIt(testSuite.tests, includedTests)
+    testSuite.setup = this.unshiftIt(testSuite.setup, includedSetup)
+    testSuite.cleanup = this.unshiftIt(testSuite.cleanup, includedCleanup)
+
+    if (testSuite.data !== undefined) {
+      testSuite.data = deepmerge.all([includedData, testSuite.data])
+    } else {
+      testSuite.data = includedData
+    }
+  }
+
   public loadTestSuite(suite: string): TestSuite {
     let testSuite: TestSuite
     try {
@@ -490,6 +544,8 @@ export class TestRunner {
       throw new Error(`Syntax error in test suite: ${error.message}`)
     }
     if (typeof testSuite.include === 'undefined') return testSuite
+
+    const included: TestSuite[] = []
     for (const inc of testSuite.include) {
       let content: Buffer
       try {
@@ -499,36 +555,10 @@ export class TestRunner {
       } catch (error) {
         throw new Error(`Error reading file ${inc}: ${error.message}`)
       }
-      const subTestSuite = this.loadTestSuite(content.toString())
+      included.push(this.loadTestSuite(content.toString()))
       this.includeStack.pop()
-      if (subTestSuite.tests !== undefined) {
-        testSuite.tests.unshift(...subTestSuite.tests)
-      }
-      if (subTestSuite.setup !== undefined) {
-        if (testSuite.setup === undefined) {
-          testSuite.setup = []
-        }
-        testSuite.setup?.unshift(...subTestSuite.setup)
-      }
-
-      if (subTestSuite.cleanup !== undefined) {
-        if (testSuite.cleanup === undefined) {
-          testSuite.cleanup = []
-        }
-        testSuite.cleanup?.unshift(...subTestSuite.cleanup)
-      }
-
-      if (subTestSuite.data !== undefined) {
-        if (testSuite.data === undefined) {
-          testSuite.data = {
-            ...subTestSuite.data,
-          }
-        } else {
-          testSuite.data = deepmerge.all([subTestSuite.data, testSuite.data])
-        }
-      }
     }
-
+    this.addIncludedTests(included, testSuite)
     return testSuite
   }
 
@@ -542,7 +572,22 @@ export class TestRunner {
       throw new Error(`Error reading file ${fileName}: ${error.message}`)
     }
     this.testSuite = this.loadTestSuite(content.toString())
+    this.checkDuplicateNames(this.testSuite)
     return this
+  }
+
+  protected genIds() {
+    this.testSuite.tests?.forEach((t, id) => {
+      t.id = id + 1
+    })
+
+    this.testSuite.setup?.forEach((t, id) => {
+      t.id = id + 1
+    })
+
+    this.testSuite.cleanup?.forEach((t, id) => {
+      t.id = id + 1
+    })
   }
 
   protected saveData(data: {[key: string]: any}) {
@@ -590,20 +635,26 @@ export class TestRunner {
       if (this.testSuite.tests !== undefined) {
         this.phase = TestRunnerPhase.TESTS
         cliService.info('running tests')
-        let i = 0
+        /* assign an ID to each */
+        this.genIds()
+
+        let failFastTriggered = false
         for (const test of this.testSuite.tests) {
-          i++
+          if (failFastTriggered && this.runResults[test.name] === undefined) {
+            /* we've already failed and --fail-fast is on, just skip the test */
+            await this.skipTest(test, 'fail fast')
+            break
+          }
           if (this.selectedTests === undefined || this.selectedTests.includes(test.name)) {
-            // eslint-disable-next-line no-await-in-loop
             const testResult = await this.runTest(test)
             if (configService.isFailfast() && testResult === TestResult.FAILED) {
               /* test failed and --fail-fast option enabled, bail out now */
-              cliService.info('Test failed and the --fail-fast option is enabled; bailing out.')
-              this.skippedTests += this.testSuite.tests.length - i
-              break
+              cliService.info('the test failed and the --fail-fast option is enabled; bailing out.')
+              failFastTriggered = true
             }
           } else {
             this.skippedTests++
+            this.runResults[test.name] = TestResult.SKIPPED
           }
         }
       }

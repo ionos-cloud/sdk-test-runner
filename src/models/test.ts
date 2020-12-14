@@ -2,6 +2,7 @@ import {TestPayload} from './test-payload'
 import {Assertion} from './assertion'
 
 export interface Test {
+  id: number;
   name: string;
   payload: TestPayload;
   repeat?: boolean;
