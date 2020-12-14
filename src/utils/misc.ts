@@ -1,3 +1,8 @@
+import {Driver} from "../models/driver";
+import {RunStats} from "../models/run-stats";
+import {TestRunner} from "../services/test-runner";
+import cliService from "../services/cli.service";
+
 export interface Duration {
   seconds: number;
   minutes: number;
@@ -45,4 +50,3 @@ export function formatDuration(d: Duration, ms = 0): string {
   }
   return ret
 }
-

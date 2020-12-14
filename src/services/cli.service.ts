@@ -14,6 +14,17 @@ export class CliService {
     return indent
   }
 
+  public h1(msg: string) {
+    cli.info('')
+    let bar = ''
+    for (let i = 0; i < msg.length + 2; i++) {
+      bar += '─'
+    }
+    cli.info(`╭${bar}╮`)
+    cli.info(`│ ${msg} │`)
+    cli.info(`╰${bar}╯`)
+  }
+
   public indent(amount = 1) {
     this.indentLevel += amount
   }

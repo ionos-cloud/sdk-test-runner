@@ -38,6 +38,11 @@ export enum TestRunnerPhase {
   CLEANUP
 }
 
+export interface RunFileOptions {
+  selected?: string[];
+  excluded?: string[];
+}
+
 export class TestRunner {
   protected phase: TestRunnerPhase = TestRunnerPhase.SETUP
 
@@ -686,5 +691,22 @@ export class TestRunner {
     }
     return stats
   }
+
+  static async runFile(file: string, driver: Driver, options: RunFileOptions): Promise<RunStats> {
+    cliService.h1(`running file ${file}`)
+    const testRunner = new TestRunner(driver)
+    testRunner.load(file)
+    if (options.selected !== undefined) {
+      cliService.info(`running only these tests: ${options.selected}`)
+      testRunner.selectTests(options.selected)
+    }
+    if (options.excluded !== undefined) {
+      cliService.info(`excluding tests ${options.excluded}`)
+      testRunner.excludeTests(options.excluded)
+    }
+
+    return testRunner.run()
+  }
+
 }
 

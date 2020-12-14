@@ -7,6 +7,9 @@ import {Command} from '@oclif/command'
 import {Driver} from '../models/driver'
 import '../filters'
 import '../functions'
+import {RunStats} from '../models/run-stats'
+import {TestBatch} from "../models/test-batch";
+import chalk from "chalk";
 
 export default class Run extends Command {
   static description = 'Runs a test suite from a JSON test specification.'
@@ -56,6 +59,12 @@ export default class Run extends Command {
       exclusive: ['driver'],
       description: 'working directory to run the driver command in',
     }),
+    batch: flags.boolean({
+      char: 'b',
+      required: false,
+      description: 'consider the input a batch, meaning it lists a batch of independent tests',
+      default: false
+    }),
     verbose: flags.boolean({
       description: 'show each assertion evaluation',
     }),
@@ -98,7 +107,7 @@ export default class Run extends Command {
     } else throw new Error('No driver specified')
 
     if (args.file === undefined) {
-      throw new Error('No test file specified')
+      throw new Error('No file specified')
     }
 
     configService.setFailFast(flags['fail-fast'])
@@ -106,21 +115,19 @@ export default class Run extends Command {
     cliService.info(`using driver ${driver.name}`)
     cliService.info(`driver command is: ${driver.command} ${driver.args.join(' ')}`)
 
-    // const testRunner = new TestRunner('/bin/sh', ['/Users/florin/work/bin/test.sh'])
-    const testRunner = new TestRunner(driver)
-    testRunner.load(args.file)
-    if (flags.test !== undefined) {
-      cliService.info(`running only these tests: ${flags.test}`)
-      testRunner.selectTests(flags.test)
+    let success = true
+    if (flags.batch) {
+      /* load a batch */
+      const testBatch = TestBatch.load(args.file)
+      success = await testBatch.run(driver, {selected: flags.test, excluded: flags.exclude})
+    } else {
+      const stats = await TestRunner.runFile(args.file, driver, {selected: flags.test, excluded: flags.exclude})
+      success = stats.failed === 0
     }
-    if (flags.exclude !== undefined) {
-      cliService.info(`excluding tests ${flags.exclude}`)
-      testRunner.excludeTests(flags.exclude)
-    }
-
-    const stats = await testRunner.run()
-    if (stats.failed > 0) {
-      this.error('test run ended with failed tests')
+    if (!success) {
+      this.error('test run ended with failed tests 😞')
+    } else {
+      cliService.info(chalk.greenBright('SUCCESS 😄'))
     }
   }
 
