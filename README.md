@@ -19,7 +19,7 @@ $ npm install -g @cloudsdk/test-runner
 $ csdk-test-runner COMMAND
 running command...
 $ csdk-test-runner (-v|--version|version)
-@cloudsdk/test-runner/1.9.0 darwin-x64 node-v14.15.0
+@cloudsdk/test-runner/1.10.0-beta.0 darwin-x64 node-v14.15.0
 $ csdk-test-runner --help [COMMAND]
 USAGE
   $ csdk-test-runner COMMAND
@@ -57,6 +57,7 @@ USAGE
   $ csdk-test-runner run [FILE]
 
 OPTIONS
+  -b, --batch                consider the input a batch, meaning it lists a batch of independent tests
   -d, --driver=driver        language driver to use; path and args are taken from config
   -f, --fail-fast            exit with failure as soon as a test fails
   -h, --help                 show CLI help
