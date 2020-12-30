@@ -15,7 +15,7 @@ Cloud SDK Test Runner
 # Usage
 <!-- usage -->
 ```sh-session
-$ npm install -g @cloudsdk/test-runner
+$ npm install -g @ionos-cloud/test-runner
 $ csdk-test-runner COMMAND
 running command...
 $ csdk-test-runner (-v|--version|version)
