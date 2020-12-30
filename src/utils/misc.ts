@@ -1,8 +1,3 @@
-import {Driver} from "../models/driver";
-import {RunStats} from "../models/run-stats";
-import {TestRunner} from "../services/test-runner";
-import cliService from "../services/cli.service";
-
 export interface Duration {
   seconds: number;
   minutes: number;

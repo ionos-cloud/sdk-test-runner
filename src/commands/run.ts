@@ -7,9 +7,8 @@ import {Command} from '@oclif/command'
 import {Driver} from '../models/driver'
 import '../filters'
 import '../functions'
-import {RunStats} from '../models/run-stats'
-import {TestBatch} from "../models/test-batch";
-import chalk from "chalk";
+import {TestBatch} from '../models/test-batch'
+import chalk from 'chalk'
 
 export default class Run extends Command {
   static description = 'Runs a test suite from a JSON test specification.'
@@ -115,7 +114,7 @@ export default class Run extends Command {
     cliService.info(`using driver ${driver.name}`)
     cliService.info(`driver command is: ${driver.command} ${driver.args.join(' ')}`)
 
-    let success = true
+    let success: boolean
     if (flags.batch) {
       /* load a batch */
       const testBatch = TestBatch.load(args.file)

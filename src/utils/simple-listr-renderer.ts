@@ -1,6 +1,5 @@
 import cliService from '../services/cli.service'
-import {TestKind} from "../models/test";
-import {Test} from "mocha";
+import {TestKind} from '../models/test'
 
 export class SimpleListrRenderer {
   protected _tasks: any[] = []

@@ -665,16 +665,19 @@ export class TestRunner {
             await this.skipTest(test, 'fail fast')
             break
           }
-          if (this.selectedTests === undefined || this.selectedTests.includes(test.name)) {
-            const testResult = await this.runTest(test)
-            if (configService.isFailfast() && testResult === TestResult.FAILED) {
-              /* test failed and --fail-fast option enabled, bail out now */
-              cliService.info('the test failed and the --fail-fast option is enabled; bailing out.')
-              failFastTriggered = true
-            }
-          } else {
+
+          /* skip test if a selection of tests was provided */
+          if (this.selectedTests !== undefined && !this.selectedTests.includes(test.name)) {
             this.skippedTests++
             this.runResults[test.name] = TestResult.SKIPPED
+            continue
+          }
+
+          const testResult = await this.runTest(test)
+          if (configService.isFailfast() && testResult === TestResult.FAILED) {
+            /* test failed and --fail-fast option enabled, bail out now */
+            cliService.info('the test failed and the --fail-fast option is enabled; bailing out.')
+            failFastTriggered = true
           }
         }
       }
@@ -722,6 +725,5 @@ export class TestRunner {
 
     return testRunner.run()
   }
-
 }
 
