@@ -1,5 +1,5 @@
 {
-  "name": "@cloudsdk/test-runner",
+  "name": "@ionos-cloud/test-runner",
   "description": "Cloud SDK Test Runner",
   "version": "1.10.0",
   "author": "Florin Mihalache",
