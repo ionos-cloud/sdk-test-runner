@@ -6,7 +6,15 @@
   "bin": {
     "csdk-test-runner": "./bin/run"
   },
-  "bugs": "https://bitbucket.1and1.org/csdk/test-runner",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ionos-cloud/sdk-test-runner.git"
+  },
+  "homepage": "https://github.com/ionos-cloud/sdk-test-runner",
+  "bugs": {
+    "url": "https://github.com/ionos-cloud/sdk-test-runner/issues",
+    "email": "florin.mihalache@ionos.com"
+  },
   "dependencies": {
     "@oclif/command": "^1.8.0",
     "@oclif/config": "^1.17.0",
@@ -38,7 +46,7 @@
     "typescript": "^3.9.7"
   },
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=12.0.0"
   },
   "files": [
     "/bin",
@@ -46,9 +54,9 @@
     "/npm-shrinkwrap.json",
     "/oclif.manifest.json"
   ],
-  "homepage": "https://bitbucket.1and1.org/csdk/test-runner/test-runner",
+  "homepage": "https://github.com/ionos-cloud/sdk-test-runner",
   "keywords": [
-    "oclif"
+    "test", "sdk"
   ],
   "license": "MIT",
   "main": "lib/index.js",
@@ -60,7 +68,6 @@
       "@oclif/plugin-help"
     ]
   },
-  "repository": "https://bitbucket.1and1.org/csdk/test-runner",
   "scripts": {
     "postpack": "rm -f oclif.manifest.json",
     "posttest": "npm run lint",
