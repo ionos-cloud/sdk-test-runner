@@ -33,9 +33,9 @@ jobs:
         with:
           node-version: ${{env.node-version}}
           registry-url: https://npm.pkg.github.com/
-          scope: '@cloudsdk'
+          scope: '@ionos-cloud'
       - run: npm ci
       - run: echo "//npm.pkg.github.com:_authToken=${{ secrets.GITHUB_TOKEN }}" > ~/.npmrc
-      - run: npm publish
+      - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
