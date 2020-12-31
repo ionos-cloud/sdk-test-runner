@@ -1,4 +1,4 @@
-@cloudsdk/test-runner
+@ionos-cloud/test-runner
 =====================
 
 Cloud SDK Test Runner
