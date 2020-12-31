@@ -3,15 +3,25 @@
 
 Cloud SDK Test Runner
 
+![CI](https://github.com/ionos-cloud/sdk-test-runner/workflows/CI/badge.svg)
 [![oclif](https://img.shields.io/badge/cli-oclif-brightgreen.svg)](https://oclif.io)
-[![Version](https://img.shields.io/npm/v/@cloudsdk/test-runner.svg)](https://npmjs.org/package/@cloudsdk/test-runner)
-[![Downloads/week](https://img.shields.io/npm/dw/@cloudsdk/test-runner.svg)](https://npmjs.org/package/@cloudsdk/test-runner)
-[![License](https://img.shields.io/npm/l/@cloudsdk/test-runner.svg)](https://github.com///blob/master/package.json)
 
 <!-- toc -->
+* [Installing via npm](#installing-via-npm)
 * [Usage](#usage)
 * [Commands](#commands)
 <!-- tocstop -->
+# Installing via npm
+
+1. Generate a Github Personal Access Token. Check the [Github Documentation](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token)
+   on how to do that.
+2. Add the following lines to your ~/.npmrc file:
+```
+@ionos-cloud:registry=https://npm.pkg.github.com/ionos-cloud
+//npm.pkg.github.com/:_authToken=<YOUR_GITHUB_PERSONAL_ACCESS_TOKEN>
+```
+
+You can also check the [Github documentation](https://docs.github.com/en/free-pro-team@latest/packages/guides/configuring-npm-for-use-with-github-packages) on how to access github npm packages.
 # Usage
 <!-- usage -->
 ```sh-session
