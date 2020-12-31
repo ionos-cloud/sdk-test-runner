@@ -20,7 +20,10 @@ Cloud SDK Test Runner
 @ionos-cloud:registry=https://npm.pkg.github.com/ionos-cloud
 //npm.pkg.github.com/:_authToken=<YOUR_GITHUB_PERSONAL_ACCESS_TOKEN>
 ```
-
+3. Install the package
+```shell
+npm install -g @ionos-cloud/test-runner
+```
 You can also check the [Github documentation](https://docs.github.com/en/free-pro-team@latest/packages/guides/configuring-npm-for-use-with-github-packages) on how to access github npm packages.
 # Usage
 <!-- usage -->
