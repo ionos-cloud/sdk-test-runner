@@ -60,35 +60,35 @@ export class FunctionService {
     for (let i = 0; i < f.args.length; i++) {
       let arr: any[]
       switch (f.args[i]) {
-      case FunctionArgType.number:
-        if (isNaN(Number(args[i]))) {
-          throw new TypeError(`function ${f.name} expects parameter #${i + 1} to be of type ${f.args[i]}; invalid number given`)
-        }
-        break
-      case FunctionArgType.array:
-        try {
-          arr = JSON.parse(args[i])
-        } catch (error) {
-          throw new TypeError(`function ${f.name} expects parameter #${i + 1} to be of type ${f.args[i]}; invalid array given`)
-        }
-        if (!Array.isArray(arr)) {
-          throw new TypeError(`function ${f.name} expects parameter #${i + 1} to be of type ${f.args[i]}; ${typeof arr} given`)
-        }
-        break
-      case FunctionArgType.object:
-        try {
-          arr = JSON.parse(args[i])
-        } catch (error) {
-          throw new TypeError(`function ${f.name} expects parameter #${i + 1} to be of type ${f.args[i]}; invalid object given`)
-        }
-        if (typeof arr !== 'object') {
-          throw new TypeError(`function ${f.name} expects parameter #${i + 1} to be of type ${f.args[i]}; ${typeof arr} given`)
-        }
-        break
-      case FunctionArgType.any:
-      case FunctionArgType.string:
-      default:
-        break
+        case FunctionArgType.number:
+          if (isNaN(Number(args[i]))) {
+            throw new TypeError(`function ${f.name} expects parameter #${i + 1} to be of type ${f.args[i]}; invalid number given`)
+          }
+          break
+        case FunctionArgType.array:
+          try {
+            arr = JSON.parse(args[i])
+          } catch (error) {
+            throw new TypeError(`function ${f.name} expects parameter #${i + 1} to be of type ${f.args[i]}; invalid array given`)
+          }
+          if (!Array.isArray(arr)) {
+            throw new TypeError(`function ${f.name} expects parameter #${i + 1} to be of type ${f.args[i]}; ${typeof arr} given`)
+          }
+          break
+        case FunctionArgType.object:
+          try {
+            arr = JSON.parse(args[i])
+          } catch (error) {
+            throw new TypeError(`function ${f.name} expects parameter #${i + 1} to be of type ${f.args[i]}; invalid object given`)
+          }
+          if (typeof arr !== 'object') {
+            throw new TypeError(`function ${f.name} expects parameter #${i + 1} to be of type ${f.args[i]}; ${typeof arr} given`)
+          }
+          break
+        case FunctionArgType.any:
+        case FunctionArgType.string:
+        default:
+          break
       }
     }
   }
