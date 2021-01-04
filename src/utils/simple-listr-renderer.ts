@@ -43,25 +43,25 @@ export class SimpleListrRenderer {
       task.subscribe(
         (event: any) => {
           switch (event.type) {
-          case 'STATE':
-            if ((task.state === 'pending' || task.state === 'completed' || task.hasFailed() || task.isSkipped()) && (this.isTest(task.title))) {
-              if (task.isPending() && !task.isStopped) {
-                cliService.info(`${task.title} [started]`)
-              } else {
-                cliService.info(`${task.title} [${task.state}]`)
+            case 'STATE':
+              if ((task.state === 'pending' || task.state === 'completed' || task.hasFailed() || task.isSkipped()) && (this.isTest(task.title))) {
+                if (task.isPending() && !task.isStopped) {
+                  cliService.info(`${task.title} [started]`)
+                } else {
+                  cliService.info(`${task.title} [${task.state}]`)
+                }
+                if (task.isSkipped()) {
+                  /* display reason for skipping */
+                  cliService.indent()
+                  cliService.print('→ reason: ' + task.output)
+                  cliService.outdent()
+                }
+                if (task.hasFailed() && task.hasSubtasks()) {
+                  /* display all failed subtasks */
+                  this.displayFailedSubtasks(task)
+                }
               }
-              if (task.isSkipped()) {
-                /* display reason for skipping */
-                cliService.indent()
-                cliService.print('→ reason: ' + task.output)
-                cliService.outdent()
-              }
-              if (task.hasFailed() && task.hasSubtasks()) {
-                /* display all failed subtasks */
-                this.displayFailedSubtasks(task)
-              }
-            }
-            break
+              break
           }
         },
         (err: Error) => {
