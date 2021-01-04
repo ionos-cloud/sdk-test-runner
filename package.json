@@ -1,7 +1,7 @@
 {
   "name": "@ionos-cloud/test-runner",
   "description": "Cloud SDK Test Runner",
-  "version": "1.10.0",
+  "version": "1.10.1-beta.0",
   "author": "Florin Mihalache",
   "bin": {
     "csdk-test-runner": "./bin/run"
@@ -54,9 +54,9 @@
     "/npm-shrinkwrap.json",
     "/oclif.manifest.json"
   ],
-  "homepage": "https://github.com/ionos-cloud/sdk-test-runner",
   "keywords": [
-    "test", "sdk"
+    "test",
+    "sdk"
   ],
   "license": "MIT",
   "main": "lib/index.js",
