@@ -7,6 +7,8 @@
     "no-await-in-loop": "off",
     "comma-dangle": "off",
     "object-curly-spacing": "off",
-    "no-negated-condition": "off"
+    "no-negated-condition": "off",
+    "@typescript-eslint/no-use-before-define": "off",
+    "indent": ["error", 2, {"SwitchCase":  1}]
   }
 }
