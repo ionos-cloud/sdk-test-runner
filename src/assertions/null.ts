@@ -8,12 +8,12 @@ export function isNull(ctx: any, task: any, value: any, condition: any) {
 
   let failed = false
   switch (condition as boolean) {
-  case true:
-    failed = (value !== null && value !== undefined)
-    break
-  case false:
-    failed = (value === null || value === undefined)
-    break
+    case true:
+      failed = (value !== null && value !== undefined)
+      break
+    case false:
+      failed = (value === null || value === undefined)
+      break
   }
 
   if (failed) {

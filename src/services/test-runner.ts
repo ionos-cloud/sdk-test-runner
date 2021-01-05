@@ -170,25 +170,25 @@ export class TestRunner {
 
       let reason = 'was skipped'
       switch (outcome) {
-      case TestResult.FAILED:
-        reason = 'failed'
-      // eslint-disable-next-line no-fallthrough
-      case TestResult.SKIPPED:
-        /* copy dep outcome i.e. if skipped, mark it skipped */
-        this.runResults[test.name] = TestResult.SKIPPED
-        this.skippedTests++
-        try {
-          await new Listr([
-            {
-              title: this.getTestTitle(test),
-              task: () => '',
-              skip: () => `dependency '${depTest.name}' ${reason}`,
-            },
-          ], {nonTTYRenderer: SimpleListrRenderer, concurrent: false, exitOnError: false}).run()
-        } catch (error) {
-          cliService.error(error.message)
-        }
-        return this.runResults[test.name]
+        case TestResult.FAILED:
+          reason = 'failed'
+        // eslint-disable-next-line no-fallthrough
+        case TestResult.SKIPPED:
+          /* copy dep outcome i.e. if skipped, mark it skipped */
+          this.runResults[test.name] = TestResult.SKIPPED
+          this.skippedTests++
+          try {
+            await new Listr([
+              {
+                title: this.getTestTitle(test),
+                task: () => '',
+                skip: () => `dependency '${depTest.name}' ${reason}`,
+              },
+            ], {nonTTYRenderer: SimpleListrRenderer, concurrent: false, exitOnError: false}).run()
+          } catch (error) {
+            cliService.error(error.message)
+          }
+          return this.runResults[test.name]
       }
     }
     return TestResult.SUCCESS
@@ -197,15 +197,15 @@ export class TestRunner {
   protected getTestTitle(test: Test) {
     let total = 0
     switch (test.kind) {
-    case TestKind.CLEANUP:
-      total = this.testSuite.cleanup?.length || 0
-      break
-    case TestKind.SETUP:
-      total = this.testSuite.setup?.length || 0
-      break
-    case TestKind.TEST:
-      total = this.testSuite.tests?.length || 0
-      break
+      case TestKind.CLEANUP:
+        total = this.testSuite.cleanup?.length || 0
+        break
+      case TestKind.SETUP:
+        total = this.testSuite.setup?.length || 0
+        break
+      case TestKind.TEST:
+        total = this.testSuite.tests?.length || 0
+        break
     }
     return `${test.kind.toUpperCase()} (${test.id}/${total}): ${test.name}`
   }
@@ -479,19 +479,19 @@ export class TestRunner {
   public findTest(name: string): Test | undefined {
     let haystack: Test[] = []
     switch (this.phase) {
-    case TestRunnerPhase.SETUP:
-      haystack = this.testSuite.setup || []
-      break
-    case TestRunnerPhase.TESTS:
-      haystack = this.testSuite.tests || []
-      break
-    case TestRunnerPhase.CLEANUP:
-      if (this.testSuite.tests !== undefined) {
-        haystack = [...haystack, ...this.testSuite.tests]
-      }
-      if (this.testSuite.cleanup !== undefined) {
-        haystack = [...haystack, ...this.testSuite.cleanup]
-      }
+      case TestRunnerPhase.SETUP:
+        haystack = this.testSuite.setup || []
+        break
+      case TestRunnerPhase.TESTS:
+        haystack = this.testSuite.tests || []
+        break
+      case TestRunnerPhase.CLEANUP:
+        if (this.testSuite.tests !== undefined) {
+          haystack = [...haystack, ...this.testSuite.tests]
+        }
+        if (this.testSuite.cleanup !== undefined) {
+          haystack = [...haystack, ...this.testSuite.cleanup]
+        }
     }
     return haystack.find((t: Test) => t.name === name)
   }
