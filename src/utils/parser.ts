@@ -32,10 +32,11 @@ export class Parser {
             throw new Error(`unknown filter ${filterName}`)
           }
         }
-        ret = ret.replace(token, this.symbolRegistry.get(symbol))
+        let regValue = this.symbolRegistry.get(symbol)
         if (filter !== undefined) {
-          ret = filter.process(ret)
+          regValue = filter.process(regValue)
         }
+        ret = ret.replace(token, regValue)
       }
     } while (found && (typeof ret === 'string'))
 
