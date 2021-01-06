@@ -37,6 +37,10 @@ export class Parser {
           regValue = filter.process(regValue)
         }
         ret = ret.replace(token, regValue)
+        if (filter !== undefined && tokens.length === 1) {
+          /* hack to be able to cast values to number */
+          ret = filter.process(ret)
+        }
       }
     } while (found && (typeof ret === 'string'))
 
