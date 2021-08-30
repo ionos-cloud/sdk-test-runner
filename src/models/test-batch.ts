@@ -24,7 +24,7 @@ export class TestBatch {
     return success
   }
 
-  static load(file: string): TestBatch {
+  static load(file: string): TestBatch | undefined {
     debugService.print(`loading batch ${file}`)
     let content: Buffer
     try {
@@ -39,14 +39,17 @@ export class TestBatch {
     } catch (error) {
       throw new Error(`Parse error in batch file ${file}: ${error.message}`)
     }
+
     if (batch.files === undefined) {
-      throw new Error(`No files declared in batch ${file}`)
+      debugService.print(`file '${file}' is not a batch file: no 'files' section found`)
+      return undefined
     }
 
     if (!Array.isArray(batch.files)) {
       throw new TypeError(`expected the "files" node to be a list in ${file}; got ${batch.files}`)
     }
 
+    debugService.print(`file '${file}' is a batch file`)
     return new TestBatch(batch.files)
   }
 }

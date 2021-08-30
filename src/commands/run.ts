@@ -115,9 +115,9 @@ export default class Run extends Command {
     cliService.info(`driver command is: ${driver.command} ${driver.args.join(' ')}`)
 
     let success: boolean
-    if (flags.batch) {
-      /* load a batch */
-      const testBatch = TestBatch.load(args.file)
+
+    const testBatch = TestBatch.load(args.file)
+    if (testBatch !== undefined) {
       success = await testBatch.run(driver, {selected: flags.test, excluded: flags.exclude})
     } else {
       const stats = await TestRunner.runFile(args.file, driver, {selected: flags.test, excluded: flags.exclude})

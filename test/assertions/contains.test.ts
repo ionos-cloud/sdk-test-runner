@@ -40,4 +40,17 @@ describe('`contains` assertion on objects', function () {
     assert.throw(() => contains(null, null, {foo: 'bar', baz: {prop1: 1, prop2: 2}}, {baz: {missingProp: 1}}))
     assert.throw(() => contains(null, null, {foo: 'bar', baz: {prop1: 1, prop2: 2}}, {bar: 123}))
   })
+
+  it('should work on Bogdans test', function () {
+    const result = {
+      description: 'My DynamicDns',
+      domains: ['dyndns1.dyndns.test-shiny-dns-pro.com', 'dyndns2.dyndns.test-shiny-dns-pro.com'],
+      updateUrl: 'https://api.hosting.ionos.com/dns/v1/dyndns?q=YWMxZmE2ODJmMzNhNDE1MTg0NzQyMzgzOTZmNDY2MmYuT0I3VmcyRFlnWWUxN29kNkFPckF0cWpucTVpODhYdFh6eTE3azBjOWs3ZTIxejlBVjJOOFpaSmEteXFxTVduMnlzd1o4V2lyWk95dHRUSjRPVzNYZWc='
+    }
+    const assert = {
+      domains: ['dyndns1.dyndns.test-shiny-dns-pro.com', 'dyndns2.dyndns.test-shiny-dns-pro.com'],
+      description: 'My DynamicDns'
+    }
+    contains(null, null, result, assert)
+  })
 })

@@ -464,6 +464,7 @@ export class TestRunner {
       const options: execa.Options = {
         input,
         cwd: (typeof this.driver.cwd === 'undefined') ? process.cwd() : this.driver.cwd,
+        maxBuffer: 100_000_000
       }
       const subprocess = execa(this.driver.command, this.driver.args, options)
       const out = await subprocess
