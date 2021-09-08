@@ -11,6 +11,8 @@ export interface Test {
   id: number;
   name: string;
   kind: TestKind;
+  type?: string;
+  parse_output?: boolean;
   payload: TestPayload;
   repeat?: boolean;
   until?: { [key: string]: Assertion };
