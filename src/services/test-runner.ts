@@ -445,6 +445,17 @@ export class TestRunner {
         iteration++
         doContinue = typeof test.until === 'undefined' || await this.shouldLoop(test)
       } while (test.repeat && doContinue && max_count >= iteration)
+
+      if (test.repeat && doContinue) {
+        /* we've exited due to timeout
+         * throw an Error subclass with an `errors` prop set,
+         * to be caught below by the "test failed" logic */
+        throw new class extends Error {
+          constructor(public errors: Record<any, any> = {}) {
+            super()
+          }
+        }()
+      }
     } catch (error) {
       if (typeof error.errors !== 'undefined') {
         /* mark test as failed */
