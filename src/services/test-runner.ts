@@ -235,7 +235,11 @@ export class TestRunner {
           ctx.startTime = process.hrtime()
           let result = null
           try {
-            result = await this.runCommand(this.parser.parseObj(test.payload))
+            if (test.type === 'shell_command') {
+              result = await this.runBashCommand(this.parser.parseObj(test.payload))
+            } else {
+              result = await this.runCommand(this.parser.parseObj(test.payload))
+            }
             this.commandError[test.name] = false
           } catch (error) {
             debugService.log(`command error: ${error}`)
@@ -245,17 +249,21 @@ export class TestRunner {
           }
 
           /* save data into symbol registry */
-          ctx.resultObj = JSON.parse(result)
-          for (const resultKey of Object.keys(ctx.resultObj)) {
-            this.symbolRegistry.save(resultKey, ctx.resultObj[resultKey])
-          }
-
-          if (typeof test.save !== 'undefined') {
-            for (const symbol of Object.keys(test.save)) {
-              const target = test.save[symbol]
-              const value = this.symbolRegistry.get(symbol)
-              this.symbolRegistry.save(target, value)
+          if (test.parse_output === undefined || test.parse_output) {
+            ctx.resultObj = JSON.parse(result)
+            for (const resultKey of Object.keys(ctx.resultObj)) {
+              this.symbolRegistry.save(resultKey, ctx.resultObj[resultKey])
             }
+
+            if (typeof test.save !== 'undefined') {
+              for (const symbol of Object.keys(test.save)) {
+                const target = test.save[symbol]
+                const value = this.symbolRegistry.get(symbol)
+                this.symbolRegistry.save(target, value)
+              }
+            }
+          } else {
+            ctx.resultObj = []
           }
         },
       },
@@ -473,6 +481,30 @@ export class TestRunner {
       return out.stdout
     } catch (error) {
       debugService.log(`${chalk.yellowBright('driver error')}: ${error.message}`)
+      throw new Error(`Error running command ${this.driver.command}: ${error.message}`)
+    }
+  }
+
+  protected async runBashCommand(payload: TestPayload) {
+    try {
+      const input = JSON.stringify(payload)
+      debugService.log(`${chalk.yellow('bash input')}: ${input}`)
+      const options: execa.Options = {
+        cwd: process.cwd(),
+        env: payload.env,
+        maxBuffer: 100_000_000
+      }
+      if (payload.command === undefined) {
+        throw new Error('`command` required parameter is not set')
+      }
+      const command = payload.command
+      const subprocess = execa(command, payload.args, options)
+      const out = await subprocess
+      debugService.log(`${chalk.yellow('bash output')}: ${out.stdout}`)
+      debugService.log(`${chalk.yellow('bash stderr')}: ${out.stderr}`)
+      return out.stdout
+    } catch (error) {
+      debugService.log(`${chalk.yellowBright('bash error')}: ${error.message}`)
       throw new Error(`Error running command ${this.driver.command}: ${error.message}`)
     }
   }
