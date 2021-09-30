@@ -694,13 +694,14 @@ export class TestRunner {
     }
     const hrstart = process.hrtime()
 
+    /* assign an ID to each */
+    this.genIds()
+
     try {
       await this.setup()
       if (this.testSuite.tests !== undefined) {
         this.phase = TestRunnerPhase.TESTS
         cliService.info('running tests')
-        /* assign an ID to each */
-        this.genIds()
 
         let failFastTriggered = false
         for (const test of this.testSuite.tests) {
