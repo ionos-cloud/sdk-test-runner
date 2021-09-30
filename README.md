@@ -32,7 +32,7 @@ $ npm install -g @ionos-cloud/test-runner
 $ csdk-test-runner COMMAND
 running command...
 $ csdk-test-runner (-v|--version|version)
-@ionos-cloud/test-runner/1.13.0 darwin-x64 node-v16.0.0
+@ionos-cloud/test-runner/1.13.1 darwin-x64 node-v16.0.0
 $ csdk-test-runner --help [COMMAND]
 USAGE
   $ csdk-test-runner COMMAND
