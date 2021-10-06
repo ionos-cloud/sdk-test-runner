@@ -112,7 +112,8 @@ export class TestRunner {
     cliService.info('running setup tests')
     for (const test of this.testSuite.setup) {
       // eslint-disable-next-line no-await-in-loop
-      if (!await this.runTest(test)) {
+      const testResult = await this.runTest(test)
+      if (testResult === TestResult.FAILED) {
         throw new Error(`Test ${test.name} from the setup sequence failed.`)
       }
     }
@@ -695,12 +696,13 @@ export class TestRunner {
     const hrstart = process.hrtime()
 
     try {
+      /* assign an ID to each */
+      this.genIds()
+
       await this.setup()
       if (this.testSuite.tests !== undefined) {
         this.phase = TestRunnerPhase.TESTS
         cliService.info('running tests')
-        /* assign an ID to each */
-        this.genIds()
 
         let failFastTriggered = false
         for (const test of this.testSuite.tests) {
