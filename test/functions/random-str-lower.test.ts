@@ -1,7 +1,7 @@
 import {RandomStrLowerFunc} from '../../src/functions/random-str-lower.func'
 import {expect} from '@oclif/test'
 
-describe('@randomStr()', () => {
+describe('@randomStrLower()', () => {
   const min = 3
   const max = 10
   const randomStr = new RandomStrLowerFunc()
