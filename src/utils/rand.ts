@@ -50,7 +50,7 @@ export function getRandomStr(min: number, max: number): string {
 }
 
 /**
- * Generates a random string between min (included) and max (included) characters
+ * Generates a random string between min (included) and max (included) lowercase characters
  * @param {number} min min
  * @param {number} max max
  *
