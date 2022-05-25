@@ -1,5 +1,5 @@
 import {expect} from '@oclif/test'
-import {getRandomInt, getRandomStr} from '../../src/utils/rand'
+import {getRandomInt, getRandomStr, getRandomStrLower} from '../../src/utils/rand'
 
 describe('randomInt', () => {
   it('should generate an int between 3 and 10', () => {
@@ -22,3 +22,11 @@ describe('randomStr', () => {
   })
 })
 
+describe('randomLowercaseStr', () => {
+  it('should return a string between 3 and 10 chars', () => {
+    const min = 3
+    const max = 10
+    const str = getRandomStrLower(min, max)
+    expect(str.length).gte(min).lte(max)
+  })
+})
