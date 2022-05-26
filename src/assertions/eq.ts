@@ -37,6 +37,8 @@ export function eq(ctx: any, task: any, value: any, condition: any) {
       throw new AssertionFailed('eq', JSON.stringify(condition), JSON.stringify(value))
     }
   } else if (value !== condition) {
-    throw new AssertionFailed('eq', JSON.stringify(condition), JSON.stringify(value))
+      if (isNaN(Date.parse(value)) || isNaN(Date.parse(value)) || Date.parse(value) !== Date.parse(condition)) {
+        throw new AssertionFailed('eq', JSON.stringify(condition), JSON.stringify(value))
+      }
   }
 }
