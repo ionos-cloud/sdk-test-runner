@@ -10,7 +10,7 @@ export function getRandomInt(min: number, max: number): number {
   const start = Math.ceil(min)
   const stop = Math.floor(max)
 
-  if (min > max) {
+  if (Number(min) > Number(max)) {
     throw new Error(`getRandomInt(${min}, ${max}): min > max`)
   }
   return Math.floor(Math.random() * (stop - start + 1)) + start
