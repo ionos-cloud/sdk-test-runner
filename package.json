@@ -1,7 +1,7 @@
 {
   "name": "@ionos-cloud/test-runner",
   "description": "Cloud SDK Test Runner",
-  "version": "1.13.2",
+  "version": "1.13.3",
   "author": "Florin Mihalache",
   "bin": {
     "csdk-test-runner": "bin/run"
