@@ -37,7 +37,7 @@ export function getRandomStr(min: number, max: number): string {
   }
 
   /* generate array of chars to use */
-  const chars = [...getChars('a', 'z'), ...getChars('A', 'Z')]
+  const chars = [...getChars('a', 'z')]
 
   /* generate random string */
   let ret = ''
