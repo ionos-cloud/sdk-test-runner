@@ -81,12 +81,14 @@ export default class Run extends Command {
     configService.setDebug(flags.debug).setVerbose(flags.verbose)
 
     /* first of all check credentials env vars */
-    if (process.env.IONOS_USERNAME === undefined) {
-      this.error('IONOS_USERNAME env var is missing')
-    }
+    if (process.env.IONOS_TOKEN === undefined) {
+      if (process.env.IONOS_USERNAME === undefined) {
+        this.error('Either IONOS_TOKEN env var must be set or IONOS_USERNAME env var is missing');
+      }
 
-    if (process.env.IONOS_PASSWORD === undefined) {
-      this.error('IONOS_PASSWORD env var is missing')
+      if (process.env.IONOS_PASSWORD === undefined) {
+        this.error('Either IONOS_TOKEN env var must be set or IONOS_PASSWORD env var is missing');
+      }
     }
 
     let driver: Driver | undefined
