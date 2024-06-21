@@ -83,11 +83,11 @@ export default class Run extends Command {
     /* first of all check credentials env vars */
     if (process.env.IONOS_TOKEN === undefined) {
       if (process.env.IONOS_USERNAME === undefined) {
-        this.error('Either IONOS_TOKEN env var must be set or IONOS_USERNAME env var is missing');
+        this.error('Either IONOS_TOKEN env var must be set or IONOS_USERNAME env var is missing')
       }
 
       if (process.env.IONOS_PASSWORD === undefined) {
-        this.error('Either IONOS_TOKEN env var must be set or IONOS_PASSWORD env var is missing');
+        this.error('Either IONOS_TOKEN env var must be set or IONOS_PASSWORD env var is missing')
       }
     }
 
