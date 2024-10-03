@@ -32,7 +32,7 @@ $ npm install -g @ionos-cloud/test-runner
 $ csdk-test-runner COMMAND
 running command...
 $ csdk-test-runner (-v|--version|version)
-@ionos-cloud/test-runner/1.13.3 darwin-x64 node-v16.0.0
+@ionos-cloud/test-runner/1.13.4 linux-x64 node-v22.3.0
 $ csdk-test-runner --help [COMMAND]
 USAGE
   $ csdk-test-runner COMMAND
@@ -86,5 +86,5 @@ EXAMPLE
   $ csdk-test-runner run
 ```
 
-_See code: [src/commands/run.ts](https://github.com/ionos-cloud/sdk-test-runner/blob/v1.12.0/src/commands/run.ts)_
+_See code: [src/commands/run.ts](https://github.com/ionos-cloud/sdk-test-runner/blob/v1.13.4/src/commands/run.ts)_
 <!-- commandsstop -->
