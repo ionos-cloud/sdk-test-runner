@@ -1,20 +1,14 @@
-import {TestRunnerFunction} from '../services/function.service'
+import {TestRunnerFunction, FunctionArgType} from '../services/function.service'
 
 export class DateMonthsFuture implements TestRunnerFunction {
-  name = 'randomEmail'
+  name = 'dateMonthsFuture'
 
-  args = null
-
-  minLen = 5
-
-  maxLen = 20
-
-  domains = ['mailinator.com', 'test.tst']
+  args: FunctionArgType[] = [FunctionArgType.number]
 
   public run(...args: any[]): string {
     let monthNo: number
     if (args.length > 0) {
-      monthNo = args[0]
+      monthNo = Math.floor(args[0])
     } else {
       monthNo = 1
     }
